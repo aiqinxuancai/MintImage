@@ -15,7 +15,7 @@ class ImageEditApi {
   Future<List<GenerationResult>> edit(
     GenerationRequest request,
     ApiProfile profile, {
-    required String responseFormat,
+    String? responseFormat,
     required int timeoutSeconds,
     CancelToken? cancelToken,
   }) async {
@@ -30,14 +30,17 @@ class ImageEditApi {
     );
     final formData = FormData();
 
-    formData.fields.addAll([
+    final fields = <MapEntry<String, String>>[
       MapEntry('model', profile.model),
       MapEntry('prompt', request.prompt),
       MapEntry('n', '1'),
       MapEntry('size', request.apiSize),
       MapEntry('quality', request.quality.apiValue),
-      MapEntry('response_format', responseFormat),
-    ]);
+    ];
+    if (responseFormat != null && responseFormat.trim().isNotEmpty) {
+      fields.add(MapEntry('response_format', responseFormat));
+    }
+    formData.fields.addAll(fields);
 
     for (final path in request.imagePaths) {
       formData.files.add(

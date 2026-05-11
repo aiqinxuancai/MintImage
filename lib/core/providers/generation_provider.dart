@@ -144,7 +144,7 @@ class GenerationController extends StateNotifier<GenerationState> {
     required ImageRecord record,
     required GenerationRequest request,
     required ApiProfile profile,
-    required String responseFormat,
+    required String? responseFormat,
     required int timeoutSeconds,
   }) async {
     final imageListController = _ref.read(imageListProvider.notifier);
@@ -291,7 +291,7 @@ class GenerationController extends StateNotifier<GenerationState> {
   Future<GenerationResult> _generateTextResult(
     GenerationRequest request,
     ApiProfile profile, {
-    required String responseFormat,
+    required String? responseFormat,
     required int timeoutSeconds,
     required CancelToken cancelToken,
   }) async {
@@ -310,7 +310,7 @@ class GenerationController extends StateNotifier<GenerationState> {
   Future<GenerationResult> _generateEditResult(
     GenerationRequest request,
     ApiProfile profile, {
-    required String responseFormat,
+    required String? responseFormat,
     required int timeoutSeconds,
     required CancelToken cancelToken,
   }) async {

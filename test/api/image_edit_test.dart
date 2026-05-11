@@ -70,12 +70,59 @@ void main() {
       final results = await api.edit(
         request,
         _profileFor(server),
-        responseFormat: 'b64_json',
         timeoutSeconds: 600,
       );
 
       expect(results, hasLength(1));
       expect(results.single.b64Json, isNotNull);
+    });
+
+    test('omits response_format for edit requests by default', () async {
+      final tempDir = await Directory.systemTemp.createTemp('gpt-edit-api');
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final first = await File(
+        p.join(tempDir.path, 'first.png'),
+      ).writeAsString('fake-png-a');
+
+      final server = await _startServer((request) async {
+        final bytes = await _collectBytes(request);
+        final payload = utf8.decode(bytes, allowMalformed: true);
+
+        expect(payload, isNot(contains('name="response_format"')));
+
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'created': 1715000001,
+            'data': [
+              {'url': 'https://example.com/image.png'},
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+      addTearDown(server.close);
+
+      final api = const ImageEditApi();
+      final request = GenerationRequest(
+        prompt: 'turn this into a watercolor poster',
+        imagePaths: [first.path],
+        sizePreset: SizePreset.posterLandscape,
+        customWidth: 1536,
+        customHeight: 1024,
+        quality: ImageQuality.medium,
+        count: 1,
+        apiProfileId: 'default',
+      );
+
+      final results = await api.edit(
+        request,
+        _profileFor(server),
+        timeoutSeconds: 600,
+      );
+
+      expect(results.single.imageUrl, 'https://example.com/image.png');
     });
   });
 }

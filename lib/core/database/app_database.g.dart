@@ -141,6 +141,17 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _rawApiResponseValueMeta =
+      const VerificationMeta('rawApiResponseValue');
+  @override
+  late final GeneratedColumn<String> rawApiResponseValue =
+      GeneratedColumn<String>(
+        'raw_api_response_value',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -193,6 +204,7 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     model,
     status,
     errorMessage,
+    rawApiResponseValue,
     createdAt,
     durationMs,
     usedSingleImageFallback,
@@ -313,6 +325,15 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         ),
       );
     }
+    if (data.containsKey('raw_api_response_value')) {
+      context.handle(
+        _rawApiResponseValueMeta,
+        rawApiResponseValue.isAcceptableOrUnknown(
+          data['raw_api_response_value']!,
+          _rawApiResponseValueMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -397,6 +418,10 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         DriftSqlType.string,
         data['${effectivePrefix}error_message'],
       ),
+      rawApiResponseValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_api_response_value'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -433,6 +458,7 @@ class ImageRecordsTableData extends DataClass
   final String model;
   final String status;
   final String? errorMessage;
+  final String? rawApiResponseValue;
   final DateTime createdAt;
   final int? durationMs;
   final bool usedSingleImageFallback;
@@ -450,6 +476,7 @@ class ImageRecordsTableData extends DataClass
     required this.model,
     required this.status,
     this.errorMessage,
+    this.rawApiResponseValue,
     required this.createdAt,
     this.durationMs,
     required this.usedSingleImageFallback,
@@ -479,6 +506,9 @@ class ImageRecordsTableData extends DataClass
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || errorMessage != null) {
       map['error_message'] = Variable<String>(errorMessage);
+    }
+    if (!nullToAbsent || rawApiResponseValue != null) {
+      map['raw_api_response_value'] = Variable<String>(rawApiResponseValue);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || durationMs != null) {
@@ -513,6 +543,9 @@ class ImageRecordsTableData extends DataClass
       errorMessage: errorMessage == null && nullToAbsent
           ? const Value.absent()
           : Value(errorMessage),
+      rawApiResponseValue: rawApiResponseValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rawApiResponseValue),
       createdAt: Value(createdAt),
       durationMs: durationMs == null && nullToAbsent
           ? const Value.absent()
@@ -540,6 +573,9 @@ class ImageRecordsTableData extends DataClass
       model: serializer.fromJson<String>(json['model']),
       status: serializer.fromJson<String>(json['status']),
       errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      rawApiResponseValue: serializer.fromJson<String?>(
+        json['rawApiResponseValue'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       durationMs: serializer.fromJson<int?>(json['durationMs']),
       usedSingleImageFallback: serializer.fromJson<bool>(
@@ -564,6 +600,7 @@ class ImageRecordsTableData extends DataClass
       'model': serializer.toJson<String>(model),
       'status': serializer.toJson<String>(status),
       'errorMessage': serializer.toJson<String?>(errorMessage),
+      'rawApiResponseValue': serializer.toJson<String?>(rawApiResponseValue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'durationMs': serializer.toJson<int?>(durationMs),
       'usedSingleImageFallback': serializer.toJson<bool>(
@@ -586,6 +623,7 @@ class ImageRecordsTableData extends DataClass
     String? model,
     String? status,
     Value<String?> errorMessage = const Value.absent(),
+    Value<String?> rawApiResponseValue = const Value.absent(),
     DateTime? createdAt,
     Value<int?> durationMs = const Value.absent(),
     bool? usedSingleImageFallback,
@@ -609,6 +647,9 @@ class ImageRecordsTableData extends DataClass
     model: model ?? this.model,
     status: status ?? this.status,
     errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
+    rawApiResponseValue: rawApiResponseValue.present
+        ? rawApiResponseValue.value
+        : this.rawApiResponseValue,
     createdAt: createdAt ?? this.createdAt,
     durationMs: durationMs.present ? durationMs.value : this.durationMs,
     usedSingleImageFallback:
@@ -639,6 +680,9 @@ class ImageRecordsTableData extends DataClass
       errorMessage: data.errorMessage.present
           ? data.errorMessage.value
           : this.errorMessage,
+      rawApiResponseValue: data.rawApiResponseValue.present
+          ? data.rawApiResponseValue.value
+          : this.rawApiResponseValue,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       durationMs: data.durationMs.present
           ? data.durationMs.value
@@ -665,6 +709,7 @@ class ImageRecordsTableData extends DataClass
           ..write('model: $model, ')
           ..write('status: $status, ')
           ..write('errorMessage: $errorMessage, ')
+          ..write('rawApiResponseValue: $rawApiResponseValue, ')
           ..write('createdAt: $createdAt, ')
           ..write('durationMs: $durationMs, ')
           ..write('usedSingleImageFallback: $usedSingleImageFallback')
@@ -687,6 +732,7 @@ class ImageRecordsTableData extends DataClass
     model,
     status,
     errorMessage,
+    rawApiResponseValue,
     createdAt,
     durationMs,
     usedSingleImageFallback,
@@ -708,6 +754,7 @@ class ImageRecordsTableData extends DataClass
           other.model == this.model &&
           other.status == this.status &&
           other.errorMessage == this.errorMessage &&
+          other.rawApiResponseValue == this.rawApiResponseValue &&
           other.createdAt == this.createdAt &&
           other.durationMs == this.durationMs &&
           other.usedSingleImageFallback == this.usedSingleImageFallback);
@@ -728,6 +775,7 @@ class ImageRecordsTableCompanion
   final Value<String> model;
   final Value<String> status;
   final Value<String?> errorMessage;
+  final Value<String?> rawApiResponseValue;
   final Value<DateTime> createdAt;
   final Value<int?> durationMs;
   final Value<bool> usedSingleImageFallback;
@@ -746,6 +794,7 @@ class ImageRecordsTableCompanion
     this.model = const Value.absent(),
     this.status = const Value.absent(),
     this.errorMessage = const Value.absent(),
+    this.rawApiResponseValue = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.usedSingleImageFallback = const Value.absent(),
@@ -765,6 +814,7 @@ class ImageRecordsTableCompanion
     required String model,
     required String status,
     this.errorMessage = const Value.absent(),
+    this.rawApiResponseValue = const Value.absent(),
     required DateTime createdAt,
     this.durationMs = const Value.absent(),
     this.usedSingleImageFallback = const Value.absent(),
@@ -791,6 +841,7 @@ class ImageRecordsTableCompanion
     Expression<String>? model,
     Expression<String>? status,
     Expression<String>? errorMessage,
+    Expression<String>? rawApiResponseValue,
     Expression<DateTime>? createdAt,
     Expression<int>? durationMs,
     Expression<bool>? usedSingleImageFallback,
@@ -810,6 +861,8 @@ class ImageRecordsTableCompanion
       if (model != null) 'model': model,
       if (status != null) 'status': status,
       if (errorMessage != null) 'error_message': errorMessage,
+      if (rawApiResponseValue != null)
+        'raw_api_response_value': rawApiResponseValue,
       if (createdAt != null) 'created_at': createdAt,
       if (durationMs != null) 'duration_ms': durationMs,
       if (usedSingleImageFallback != null)
@@ -832,6 +885,7 @@ class ImageRecordsTableCompanion
     Value<String>? model,
     Value<String>? status,
     Value<String?>? errorMessage,
+    Value<String?>? rawApiResponseValue,
     Value<DateTime>? createdAt,
     Value<int?>? durationMs,
     Value<bool>? usedSingleImageFallback,
@@ -851,6 +905,7 @@ class ImageRecordsTableCompanion
       model: model ?? this.model,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
+      rawApiResponseValue: rawApiResponseValue ?? this.rawApiResponseValue,
       createdAt: createdAt ?? this.createdAt,
       durationMs: durationMs ?? this.durationMs,
       usedSingleImageFallback:
@@ -901,6 +956,11 @@ class ImageRecordsTableCompanion
     if (errorMessage.present) {
       map['error_message'] = Variable<String>(errorMessage.value);
     }
+    if (rawApiResponseValue.present) {
+      map['raw_api_response_value'] = Variable<String>(
+        rawApiResponseValue.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -934,6 +994,7 @@ class ImageRecordsTableCompanion
           ..write('model: $model, ')
           ..write('status: $status, ')
           ..write('errorMessage: $errorMessage, ')
+          ..write('rawApiResponseValue: $rawApiResponseValue, ')
           ..write('createdAt: $createdAt, ')
           ..write('durationMs: $durationMs, ')
           ..write('usedSingleImageFallback: $usedSingleImageFallback, ')
@@ -970,6 +1031,7 @@ typedef $$ImageRecordsTableTableCreateCompanionBuilder =
       required String model,
       required String status,
       Value<String?> errorMessage,
+      Value<String?> rawApiResponseValue,
       required DateTime createdAt,
       Value<int?> durationMs,
       Value<bool> usedSingleImageFallback,
@@ -990,6 +1052,7 @@ typedef $$ImageRecordsTableTableUpdateCompanionBuilder =
       Value<String> model,
       Value<String> status,
       Value<String?> errorMessage,
+      Value<String?> rawApiResponseValue,
       Value<DateTime> createdAt,
       Value<int?> durationMs,
       Value<bool> usedSingleImageFallback,
@@ -1067,6 +1130,11 @@ class $$ImageRecordsTableTableFilterComposer
 
   ColumnFilters<String> get errorMessage => $composableBuilder(
     column: $table.errorMessage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawApiResponseValue => $composableBuilder(
+    column: $table.rawApiResponseValue,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1160,6 +1228,11 @@ class $$ImageRecordsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get rawApiResponseValue => $composableBuilder(
+    column: $table.rawApiResponseValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1234,6 +1307,11 @@ class $$ImageRecordsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get rawApiResponseValue => $composableBuilder(
+    column: $table.rawApiResponseValue,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1301,6 +1379,7 @@ class $$ImageRecordsTableTableTableManager
                 Value<String> model = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
+                Value<String?> rawApiResponseValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int?> durationMs = const Value.absent(),
                 Value<bool> usedSingleImageFallback = const Value.absent(),
@@ -1319,6 +1398,7 @@ class $$ImageRecordsTableTableTableManager
                 model: model,
                 status: status,
                 errorMessage: errorMessage,
+                rawApiResponseValue: rawApiResponseValue,
                 createdAt: createdAt,
                 durationMs: durationMs,
                 usedSingleImageFallback: usedSingleImageFallback,
@@ -1339,6 +1419,7 @@ class $$ImageRecordsTableTableTableManager
                 required String model,
                 required String status,
                 Value<String?> errorMessage = const Value.absent(),
+                Value<String?> rawApiResponseValue = const Value.absent(),
                 required DateTime createdAt,
                 Value<int?> durationMs = const Value.absent(),
                 Value<bool> usedSingleImageFallback = const Value.absent(),
@@ -1357,6 +1438,7 @@ class $$ImageRecordsTableTableTableManager
                 model: model,
                 status: status,
                 errorMessage: errorMessage,
+                rawApiResponseValue: rawApiResponseValue,
                 createdAt: createdAt,
                 durationMs: durationMs,
                 usedSingleImageFallback: usedSingleImageFallback,

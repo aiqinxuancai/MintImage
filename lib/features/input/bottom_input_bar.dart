@@ -81,12 +81,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     final activeProfile = settings.activeProfile;
     final hasApiKey = activeProfile.apiKey.trim().isNotEmpty;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final isDesktop = _isDesktopPlatform;
     final theme = Theme.of(context);
-    final modeLabel = _attachments.isEmpty ? '文生图' : '改图模式';
-    final modeHint = _attachments.isEmpty
-        ? '底部直接输入提示词即可开始生成'
-        : '已附加参考图，发送后会自动切换为图生图';
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
@@ -106,54 +101,8 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          _ContextPill(
-                            icon: _attachments.isEmpty
-                                ? Icons.auto_awesome_rounded
-                                : Icons.collections_rounded,
-                            label: modeLabel,
-                          ),
-                          const SizedBox(width: 8),
-                          _ContextPill(
-                            icon: Icons.hub_rounded,
-                            label: activeProfile.name,
-                          ),
-                          const Spacer(),
-                          if (isDesktop)
-                            Text(
-                              'Enter 发送 · Ctrl+Enter 换行',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                        ],
-                      ),
-                      if (isDesktop) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline_rounded,
-                              size: 14,
-                              color: AppThemeTokens.textSecondary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                modeHint,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppThemeTokens.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                       if (_attachments.isNotEmpty) ...[
-                        const SizedBox(height: 10),
                         AttachmentPreviewStrip(
                           attachments: _attachments,
                           onRemove: (index) {
@@ -476,38 +425,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _ContextPill extends StatelessWidget {
-  const _ContextPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppThemeTokens.surfaceSoft,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppThemeTokens.primaryStrong),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppThemeTokens.primaryStrong,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

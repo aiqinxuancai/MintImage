@@ -11,18 +11,24 @@ void main() {
   final baseUrl = Platform.environment['TEST_BASE_URL'];
   final apiKey = Platform.environment['TEST_API_KEY'];
   final model = Platform.environment['TEST_MODEL'] ?? 'gpt-image-2';
+  final prompt =
+      Platform.environment['TEST_PROMPT'] ??
+      'a clean light blue abstract icon on a white background';
+  final timeoutSeconds =
+      int.tryParse(Platform.environment['TEST_TIMEOUT_SECONDS'] ?? '') ??
+      SettingsModel.defaultRequestTimeoutSeconds;
 
   test(
     'generates a real image with the provided URL and key',
     () async {
       final api = const ImageGenerationApi();
       final request = GenerationRequest(
-        prompt: 'a clean light blue abstract icon on a white background',
+        prompt: prompt,
         imagePaths: const [],
         sizePreset: SizePreset.square1k,
         customWidth: 1024,
         customHeight: 1024,
-        quality: ImageQuality.low,
+        quality: ImageQuality.auto,
         count: 1,
         apiProfileId: 'live',
       );
@@ -37,8 +43,7 @@ void main() {
       final results = await api.generate(
         request,
         profile,
-        responseFormat: 'b64_json',
-        timeoutSeconds: SettingsModel.defaultRequestTimeoutSeconds,
+        timeoutSeconds: timeoutSeconds,
       );
 
       expect(results, isNotEmpty);

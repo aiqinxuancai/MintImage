@@ -9,6 +9,7 @@ void main() {
       settings.requestTimeoutSeconds,
       SettingsModel.defaultRequestTimeoutSeconds,
     );
+    expect(settings.responseFormat, isNull);
   });
 
   test('settings round-trip preserves request timeout', () {
@@ -19,5 +20,24 @@ void main() {
     final decoded = SettingsModel.decode(settings.encode());
 
     expect(decoded.requestTimeoutSeconds, 900);
+  });
+
+  test('legacy b64_json responseFormat is normalized to null', () {
+    final decoded = SettingsModel.fromJson({
+      'profiles': [
+        {
+          'id': '1',
+          'name': '默认',
+          'baseUrl': 'https://api.openai.com',
+          'apiKey': 'key',
+          'model': 'gpt-image-2',
+        },
+      ],
+      'activeProfileId': '1',
+      'responseFormat': 'b64_json',
+      'requestTimeoutSeconds': 600,
+    });
+
+    expect(decoded.responseFormat, isNull);
   });
 }

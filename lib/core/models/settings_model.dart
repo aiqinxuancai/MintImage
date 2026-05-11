@@ -81,7 +81,7 @@ class SettingsModel {
   const SettingsModel({
     required this.profiles,
     required this.activeProfileId,
-    this.responseFormat = 'b64_json',
+    this.responseFormat,
     this.requestTimeoutSeconds = defaultRequestTimeoutSeconds,
   });
 
@@ -90,7 +90,7 @@ class SettingsModel {
     return SettingsModel(
       profiles: [defaultProfile],
       activeProfileId: defaultProfile.id,
-      responseFormat: 'b64_json',
+      responseFormat: null,
       requestTimeoutSeconds: defaultRequestTimeoutSeconds,
     );
   }
@@ -115,7 +115,7 @@ class SettingsModel {
     return SettingsModel(
       profiles: profiles,
       activeProfileId: resolvedActiveProfileId,
-      responseFormat: json['responseFormat'] as String? ?? 'b64_json',
+      responseFormat: _normalizeResponseFormat(json['responseFormat']),
       requestTimeoutSeconds: _normalizeRequestTimeoutSeconds(
         json['requestTimeoutSeconds'],
       ),
@@ -124,7 +124,7 @@ class SettingsModel {
 
   final List<ApiProfile> profiles;
   final String activeProfileId;
-  final String responseFormat;
+  final String? responseFormat;
   final int requestTimeoutSeconds;
 
   ApiProfile get activeProfile {
@@ -147,12 +147,15 @@ class SettingsModel {
     List<ApiProfile>? profiles,
     String? activeProfileId,
     String? responseFormat,
+    bool clearResponseFormat = false,
     int? requestTimeoutSeconds,
   }) {
     return SettingsModel(
       profiles: profiles ?? this.profiles,
       activeProfileId: activeProfileId ?? this.activeProfileId,
-      responseFormat: responseFormat ?? this.responseFormat,
+      responseFormat: clearResponseFormat
+          ? null
+          : responseFormat ?? this.responseFormat,
       requestTimeoutSeconds:
           requestTimeoutSeconds ?? this.requestTimeoutSeconds,
     );
@@ -188,5 +191,22 @@ class SettingsModel {
     }
 
     return parsed;
+  }
+
+  static String? _normalizeResponseFormat(Object? rawValue) {
+    final value = switch (rawValue) {
+      String text => text.trim(),
+      _ => '',
+    };
+
+    if (value.isEmpty) {
+      return null;
+    }
+
+    if (value == 'b64_json') {
+      return null;
+    }
+
+    return value;
   }
 }

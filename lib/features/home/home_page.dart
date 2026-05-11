@@ -89,16 +89,26 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             Positioned.fill(
               child: hasApiKey
-                  ? ImageListWidget(
-                      onReusePrompt: (prompt) {
-                        _inputBarKey.currentState?.prefillPrompt(prompt);
-                      },
-                      onReuseEdit: (record) {
-                        _inputBarKey.currentState?.prefillForEdit(record);
-                      },
-                      onRetryRecord: _retryRecord,
-                      onCancelRecord: _cancelRecord,
-                      onDeleteRecord: _deleteRecord,
+                  ? Column(
+                      children: [
+                        Expanded(
+                          child: ImageListWidget(
+                            onReusePrompt: (prompt) {
+                              _inputBarKey.currentState?.prefillPrompt(prompt);
+                            },
+                            onReuseEdit: (record) {
+                              _inputBarKey.currentState?.prefillForEdit(record);
+                            },
+                            onRetryRecord: _retryRecord,
+                            onCancelRecord: _cancelRecord,
+                            onDeleteRecord: _deleteRecord,
+                          ),
+                        ),
+                        BottomInputBar(
+                          key: _inputBarKey,
+                          onSubmit: _submitRequest,
+                        ),
+                      ],
                     )
                   : EmptyState(
                       title: '请先设置 API Key',
@@ -108,14 +118,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                       onAction: _openSettings,
                     ),
             ),
-            if (hasApiKey)
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: BottomInputBar(
-                  key: _inputBarKey,
-                  onSubmit: _submitRequest,
-                ),
-              ),
           ],
         ),
       ),

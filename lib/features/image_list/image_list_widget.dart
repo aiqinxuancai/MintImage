@@ -31,7 +31,7 @@ class ImageListWidget extends ConsumerWidget {
         onRefresh: () => ref.read(imageListProvider.notifier).reload(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(12, 24, 12, 220),
+          padding: const EdgeInsets.fromLTRB(12, 24, 12, 24),
           children: const [
             SizedBox(height: 48),
             EmptyState(
@@ -47,7 +47,7 @@ class ImageListWidget extends ConsumerWidget {
       onRefresh: () => ref.read(imageListProvider.notifier).reload(),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 176),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         itemCount: records.length,
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {

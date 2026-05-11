@@ -14,7 +14,7 @@ class ImageGenerationApi {
   Future<List<GenerationResult>> generate(
     GenerationRequest request,
     ApiProfile profile, {
-    required String responseFormat,
+    String? responseFormat,
     required int timeoutSeconds,
     CancelToken? cancelToken,
   }) async {
@@ -23,14 +23,22 @@ class ImageGenerationApi {
       timeoutSeconds: timeoutSeconds,
       requestLogService: requestLogService,
     );
-    final response = await client.postJson('/v1/images/generations', {
+    final body = <String, dynamic>{
       'model': profile.model,
       'prompt': request.prompt,
       'n': 1,
       'size': request.apiSize,
       'quality': request.quality.apiValue,
-      'response_format': responseFormat,
-    }, cancelToken: cancelToken);
+    };
+    if (responseFormat != null && responseFormat.trim().isNotEmpty) {
+      body['response_format'] = responseFormat;
+    }
+
+    final response = await client.postJson(
+      '/v1/images/generations',
+      body,
+      cancelToken: cancelToken,
+    );
 
     return _parseResults(response);
   }
