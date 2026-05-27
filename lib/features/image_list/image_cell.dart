@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/image_record.dart';
 import '../../core/providers/generation_provider.dart';
+import '../../core/providers/settings_provider.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets/loading_image_cell.dart';
 import 'image_preview_page.dart';
@@ -38,43 +39,36 @@ class ImageCell extends ConsumerWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         onTap: _canPreview ? () => _openPreview(context) : null,
         child: Container(
-          decoration: AppDecorations.card(radius: 24),
+          decoration: AppDecorations.card(radius: 20),
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
                   width: imageSize,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Hero(
-                        tag: 'image-${record.id}',
-                        child: _buildThumbnail(imageSize),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildStatusWidget(context, theme),
-                    ],
+                  child: Hero(
+                    tag: 'image-${record.id}',
+                    child: _buildThumbnail(imageSize),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Text(
                               record.prompt,
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppThemeTokens.textPrimary,
@@ -84,6 +78,7 @@ class ImageCell extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          _buildStatusWidget(context, theme),
                           IconButton(
                             tooltip: '更多',
                             onPressed: () => _showActions(context),
@@ -92,7 +87,7 @@ class ImageCell extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -108,18 +103,18 @@ class ImageCell extends ConsumerWidget {
                             ),
                             const SizedBox(width: 6),
                             _InfoChip(
-                              icon: Icons.memory_rounded,
-                              label: record.model,
+                              icon: Icons.api_rounded,
+                              label: _apiProfileName(ref),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 5),
                       Row(
                         children: [
                           Icon(
                             Icons.schedule_rounded,
-                            size: 13,
+                            size: 12,
                             color: AppThemeTokens.textSecondary,
                           ),
                           const SizedBox(width: 5),
@@ -129,11 +124,11 @@ class ImageCell extends ConsumerWidget {
                         ],
                       ),
                       if (record.usedSingleImageFallback) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 5),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
+                            horizontal: 8,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: AppThemeTokens.warningSurface,
@@ -182,12 +177,12 @@ class ImageCell extends ConsumerWidget {
   double _thumbnailSize(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     if (width >= 900) {
-      return 96;
+      return 80;
     }
     if (width >= 600) {
-      return 88;
+      return 72;
     }
-    return 64;
+    return 56;
   }
 
   Widget _buildThumbnail(double imageSize) {
@@ -395,6 +390,14 @@ class ImageCell extends ConsumerWidget {
     final elapsed = DateTime.now().difference(startedAt).inSeconds;
     return elapsed < 0 ? 0 : elapsed;
   }
+
+  String _apiProfileName(WidgetRef ref) {
+    final profiles = ref.watch(settingsProvider).profiles;
+    for (final p in profiles) {
+      if (p.id == record.apiProfileId) return p.name;
+    }
+    return '未知';
+  }
 }
 
 class _ImageThumb extends StatelessWidget {
@@ -407,10 +410,10 @@ class _ImageThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: AppDecorations.softShadow,
       ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(20), child: child),
+      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: child),
     );
   }
 }
@@ -424,7 +427,7 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: AppThemeTokens.surfaceSoft,
         borderRadius: BorderRadius.circular(999),
@@ -432,13 +435,14 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppThemeTokens.primaryStrong),
-          const SizedBox(width: 5),
+          Icon(icon, size: 11, color: AppThemeTokens.primaryStrong),
+          const SizedBox(width: 4),
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppThemeTokens.primaryStrong,
               fontWeight: FontWeight.w700,
+              fontSize: 11,
             ),
           ),
         ],
@@ -474,7 +478,7 @@ class _StatusChip extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -484,6 +488,7 @@ class _StatusChip extends StatelessWidget {
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: foregroundColor,
           fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );
@@ -502,7 +507,7 @@ class _FallbackThumb extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         color: AppThemeTokens.surfaceSoft,
       ),
       child: Icon(icon, color: AppThemeTokens.primary),
