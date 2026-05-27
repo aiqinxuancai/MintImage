@@ -60,6 +60,16 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
   Future<void> prefillForEdit(ImageRecord record) async {
     prefillPrompt(record.prompt);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _sizePreset = _matchingSizePreset(record.width, record.height);
+      _customWidth = record.width;
+      _customHeight = record.height;
+    });
+
     final sourcePath = record.resultImagePath ?? record.sourceImagePath;
     if (sourcePath == null) {
       return;
@@ -73,6 +83,16 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     setState(() {
       _attachments = [attachment];
     });
+  }
+
+  SizePreset _matchingSizePreset(int width, int height) {
+    return SizePreset.values.firstWhere(
+      (preset) =>
+          preset != SizePreset.custom &&
+          preset.width == width &&
+          preset.height == height,
+      orElse: () => SizePreset.custom,
+    );
   }
 
   @override

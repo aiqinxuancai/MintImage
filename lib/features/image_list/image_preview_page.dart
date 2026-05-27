@@ -104,26 +104,6 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
                       record.prompt,
                       style: const TextStyle(color: Colors.white, height: 1.45),
                     ),
-                    if (record.rawApiResponseValue != null &&
-                        record.rawApiResponseValue!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'API 实际响应值',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      SelectableText(
-                        record.rawApiResponseValue!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

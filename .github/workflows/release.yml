@@ -1,0 +1,116 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+      - name: Archive Windows build
+        run: |
+          cd build/windows/x64/runner/Release
+          7z a -tzip ../../../../../windows-x64.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: windows-x64.zip
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter build macos --release
+
+      - name: Archive macOS build
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../../macos-arm64.zip *.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: macos-arm64.zip
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+
+      - name: Archive iOS build
+        run: |
+          cd build/ios/iphoneos
+          zip -r ../../../ios-nosign.zip Runner.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ios-nosign.zip
+
+  release:
+    needs: [build-windows, build-android, build-macos, build-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            windows-x64.zip
+            app-release.apk
+            macos-arm64.zip
+            ios-nosign.zip
