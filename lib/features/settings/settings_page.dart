@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/settings_model.dart';
 import '../../core/providers/image_list_provider.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../core/version/app_version.dart';
 import '../../shared/theme.dart';
 import '../logs/request_log_page.dart';
 import 'api_profile_edit_page.dart';
@@ -43,7 +45,7 @@ class SettingsPage extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
           children: [
-            _SettingsHeroCard(activeProfile: settings.activeProfile),
+            const _AppInfoCard(),
             const SizedBox(height: 12),
             _RequestTimeoutCard(
               timeoutSeconds: settings.requestTimeoutSeconds,
@@ -251,47 +253,137 @@ class SettingsPage extends ConsumerWidget {
       Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 }
 
-class _SettingsHeroCard extends StatelessWidget {
-  const _SettingsHeroCard({required this.activeProfile});
-
-  final ApiProfile activeProfile;
+class _AppInfoCard extends StatelessWidget {
+  const _AppInfoCard();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: AppDecorations.card(radius: 30),
-      padding: const EdgeInsets.all(20),
+      decoration: AppDecorations.card(radius: 28),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: AppThemeTokens.surfaceSoft,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.tune_rounded),
+                child: const Icon(Icons.info_outline_rounded),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'API 配置中心',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  '关于 MintImage',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          _InfoRow(
+            icon: Icons.sell_outlined,
+            label: '版本',
+            value: AppVersion.current,
+          ),
           const SizedBox(height: 10),
-          Text(
-            '当前正在使用 ${activeProfile.name}，可以在这里切换不同的代理地址、模型和 Key 组合。',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          _InfoRow(
+            icon: Icons.code_rounded,
+            label: '开源地址',
+            value: AppVersion.repositoryUrl,
+            onTap: () => _openRepository(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openRepository(BuildContext context) async {
+    var launched = false;
+    try {
+      launched = await launchUrl(
+        Uri.parse(AppVersion.repositoryUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      launched = false;
+    }
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法打开 GitHub 地址。')));
+    }
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Row(
+      children: [
+        Icon(icon, size: 18, color: AppThemeTokens.primaryStrong),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 64,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: AppThemeTokens.textSecondary,
             ),
           ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: onTap == null
+                  ? AppThemeTokens.textPrimary
+                  : AppThemeTokens.primaryStrong,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        if (onTap != null) ...[
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.open_in_new_rounded,
+            size: 16,
+            color: AppThemeTokens.primaryStrong,
+          ),
         ],
+      ],
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: content,
       ),
     );
   }
