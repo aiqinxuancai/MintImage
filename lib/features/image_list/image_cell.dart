@@ -94,12 +94,11 @@ class ImageCell extends ConsumerWidget {
                               icon: Icons.api_rounded,
                               label: _compactLabel(_apiProfileName(ref)),
                             ),
-                            if (_durationLabel(requestStartedAt)
-                                case final duration?)
-                              _OverlayChip(
-                                icon: Icons.timer_outlined,
-                                label: duration,
-                              ),
+                            _DurationChip(
+                              record: record,
+                              requestStartedAt: requestStartedAt,
+                              elapsedSeconds: _elapsedSeconds,
+                            ),
                             if (record.usedSingleImageFallback)
                               const _OverlayChip(
                                 icon: Icons.filter_1_rounded,
@@ -315,20 +314,6 @@ class ImageCell extends ConsumerWidget {
     return '${time.year}-$month-$day $hour:$minute';
   }
 
-  String? _durationLabel(DateTime? requestStartedAt) {
-    if (record.status == ImageRecordStatus.loading &&
-        requestStartedAt != null) {
-      return '${_elapsedSeconds(requestStartedAt)}s';
-    }
-
-    final durationMs = record.durationMs;
-    if (durationMs == null) {
-      return null;
-    }
-
-    return '${(durationMs / 1000).toStringAsFixed(1)}s';
-  }
-
   int _elapsedSeconds(DateTime startedAt) {
     final elapsed = DateTime.now().difference(startedAt).inSeconds;
     return elapsed < 0 ? 0 : elapsed;
@@ -374,6 +359,48 @@ class _MetaOverlay extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(5, 14, 5, 5),
         child: Wrap(spacing: 4, runSpacing: 4, children: chips),
       ),
+    );
+  }
+}
+
+class _DurationChip extends StatelessWidget {
+  const _DurationChip({
+    required this.record,
+    required this.requestStartedAt,
+    required this.elapsedSeconds,
+  });
+
+  final ImageRecord record;
+  final DateTime? requestStartedAt;
+  final int Function(DateTime startedAt) elapsedSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final startedAt = requestStartedAt;
+    if (record.status == ImageRecordStatus.loading && startedAt != null) {
+      return StreamBuilder<int>(
+        stream: Stream<int>.periodic(
+          const Duration(seconds: 1),
+          (tick) => tick,
+        ),
+        initialData: 0,
+        builder: (context, snapshot) {
+          return _OverlayChip(
+            icon: Icons.timer_outlined,
+            label: '${elapsedSeconds(startedAt)}s',
+          );
+        },
+      );
+    }
+
+    final durationMs = record.durationMs;
+    if (durationMs == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _OverlayChip(
+      icon: Icons.timer_outlined,
+      label: '${(durationMs / 1000).toStringAsFixed(1)}s',
     );
   }
 }

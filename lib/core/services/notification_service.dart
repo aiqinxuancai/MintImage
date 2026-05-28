@@ -17,9 +17,13 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  bool _permissionsRequested = false;
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool requestPermissions = false}) async {
     if (_initialized) {
+      if (requestPermissions) {
+        await _requestPermissions();
+      }
       return;
     }
 
@@ -59,25 +63,16 @@ class NotificationService {
             importance: Importance.high,
           ),
         );
-        await androidPlugin?.requestNotificationsPermission();
-      } else if (Platform.isIOS) {
-        await _plugin
-            .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin
-            >()
-            ?.requestPermissions(alert: true, badge: true, sound: true);
-      } else if (Platform.isMacOS) {
-        await _plugin
-            .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin
-            >()
-            ?.requestPermissions(alert: true, badge: true, sound: true);
       }
     } catch (_) {
       return;
     }
 
     _initialized = true;
+
+    if (requestPermissions) {
+      await _requestPermissions();
+    }
   }
 
   Future<void> showResult(ImageRecord record) async {
@@ -86,7 +81,9 @@ class NotificationService {
     }
 
     if (!_initialized) {
-      await initialize();
+      await initialize(requestPermissions: true);
+    } else {
+      await _requestPermissions();
     }
 
     if (!_initialized) {
@@ -128,6 +125,35 @@ class NotificationService {
 
   int _notificationId(String recordId) {
     return recordId.hashCode & 0x7fffffff;
+  }
+
+  Future<void> _requestPermissions() async {
+    if (_permissionsRequested) {
+      return;
+    }
+
+    try {
+      if (Platform.isAndroid) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.requestNotificationsPermission();
+      } else if (Platform.isIOS) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      } else if (Platform.isMacOS) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+      _permissionsRequested = true;
+    } catch (_) {}
   }
 
   String _shorten(String text, {int maxLength = 72}) {
