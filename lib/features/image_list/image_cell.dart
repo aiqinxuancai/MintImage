@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,13 +9,13 @@ import '../../core/models/image_record.dart';
 import '../../core/providers/generation_provider.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../shared/theme.dart';
-import '../../shared/widgets/loading_image_cell.dart';
 import 'image_preview_page.dart';
 
 class ImageCell extends ConsumerWidget {
   const ImageCell({
     super.key,
     required this.record,
+    required this.imageHeight,
     required this.onReusePrompt,
     required this.onReuseEdit,
     required this.onRetry,
@@ -23,6 +24,7 @@ class ImageCell extends ConsumerWidget {
   });
 
   final ImageRecord record;
+  final double imageHeight;
   final VoidCallback onReusePrompt;
   final VoidCallback onReuseEdit;
   final VoidCallback onRetry;
@@ -32,136 +34,116 @@ class ImageCell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final imageSize = _thumbnailSize(context);
     final requestStartedAt = ref.watch(
       generationProvider.select((state) => state.requestStartedAts[record.id]),
     );
 
     return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
+      color: AppThemeTokens.surface,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: _canPreview ? () => _openPreview(context) : null,
-        child: Container(
-          decoration: AppDecorations.card(radius: 20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: imageSize,
-                  child: Hero(
-                    tag: 'image-${record.id}',
-                    child: _buildThumbnail(imageSize),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        onLongPress: () => _showActions(context),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: AppThemeTokens.border.withValues(alpha: 0.7),
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: imageHeight,
+                width: double.infinity,
+                child: InkWell(
+                  onTap: _canPreview ? () => _openPreview(context) : null,
+                  onLongPress: () => _showActions(context),
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              record.prompt,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppThemeTokens.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                height: 1.25,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildStatusWidget(context, theme),
-                          IconButton(
-                            tooltip: '更多',
-                            onPressed: () => _showActions(context),
-                            icon: const Icon(Icons.more_horiz_rounded),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                      Hero(tag: 'image-${record.id}', child: _buildImage()),
+                      Positioned(
+                        top: 6,
+                        right: 6,
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _InfoChip(
-                              icon: Icons.aspect_ratio_rounded,
-                              label: record.sizeLabel,
-                            ),
-                            const SizedBox(width: 6),
-                            _InfoChip(
-                              icon: Icons.auto_awesome_rounded,
-                              label: record.qualityLabel,
-                            ),
-                            const SizedBox(width: 6),
-                            _InfoChip(
-                              icon: Icons.api_rounded,
-                              label: _apiProfileName(ref),
-                            ),
+                            _ActualImageSizeChip(record: record),
+                            const SizedBox(width: 4),
+                            _buildStatusWidget(context),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 12,
-                            color: AppThemeTokens.textSecondary,
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: _buildTimeLabel(theme, requestStartedAt),
-                          ),
-                        ],
-                      ),
-                      if (record.usedSingleImageFallback) ...[
-                        const SizedBox(height: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppThemeTokens.warningSurface,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline_rounded,
-                                size: 13,
-                                color: AppThemeTokens.warningText,
+                      Positioned(
+                        left: 6,
+                        right: 6,
+                        bottom: 6,
+                        child: _MetaOverlay(
+                          chips: [
+                            _OverlayChip(
+                              icon: Icons.aspect_ratio_rounded,
+                              label: record.sizeLabel,
+                            ),
+                            _OverlayChip(
+                              icon: Icons.auto_awesome_rounded,
+                              label: record.qualityLabel,
+                            ),
+                            _OverlayChip(
+                              icon: Icons.api_rounded,
+                              label: _compactLabel(_apiProfileName(ref)),
+                            ),
+                            if (_durationLabel(requestStartedAt)
+                                case final duration?)
+                              _OverlayChip(
+                                icon: Icons.timer_outlined,
+                                label: duration,
                               ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  '代理不支持多图，已退化为单图发送。',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppThemeTokens.warningText,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                            if (record.usedSingleImageFallback)
+                              const _OverlayChip(
+                                icon: Icons.filter_1_rounded,
+                                label: '单图',
                               ),
-                            ],
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.prompt,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppThemeTokens.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          height: 1.28,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatTime(record.createdAt),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppThemeTokens.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -171,77 +153,57 @@ class ImageCell extends ConsumerWidget {
   bool get _canPreview {
     return record.resultImagePath != null ||
         record.resultImageUrl != null ||
-        record.sourceImagePath != null;
+        record.sourceAttachmentPaths.isNotEmpty;
   }
 
-  double _thumbnailSize(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    if (width >= 900) {
-      return 80;
-    }
-    if (width >= 600) {
-      return 72;
-    }
-    return 56;
-  }
-
-  Widget _buildThumbnail(double imageSize) {
+  Widget _buildImage() {
     if (record.status == ImageRecordStatus.loading ||
         record.status == ImageRecordStatus.pending) {
-      return LoadingImageCell(size: imageSize);
+      return const _LoadingThumb();
     }
 
     if (record.resultImagePath != null &&
         File(record.resultImagePath!).existsSync()) {
-      return _ImageThumb(
-        size: imageSize,
-        child: Image.file(
-          File(record.resultImagePath!),
-          width: imageSize,
-          height: imageSize,
-          fit: BoxFit.cover,
-        ),
+      return Image.file(
+        File(record.resultImagePath!),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
       );
     }
 
     if (record.sourceImagePath != null &&
         File(record.sourceImagePath!).existsSync()) {
-      return _ImageThumb(
-        size: imageSize,
-        child: Image.file(
-          File(record.sourceImagePath!),
-          width: imageSize,
-          height: imageSize,
-          fit: BoxFit.cover,
-        ),
+      return Image.file(
+        File(record.sourceImagePath!),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
       );
     }
 
     if (record.resultImageUrl != null) {
-      return _ImageThumb(
-        size: imageSize,
-        child: CachedNetworkImage(
-          imageUrl: record.resultImageUrl!,
-          width: imageSize,
-          height: imageSize,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => LoadingImageCell(size: imageSize),
-          errorWidget: (context, url, error) =>
-              _FallbackThumb(size: imageSize, icon: Icons.image_not_supported),
-        ),
+      return CachedNetworkImage(
+        imageUrl: record.resultImageUrl!,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const _LoadingThumb(),
+        errorWidget: (context, url, error) =>
+            const _FallbackThumb(icon: Icons.image_not_supported_rounded),
       );
     }
 
-    return _FallbackThumb(size: imageSize, icon: Icons.broken_image_rounded);
+    return const _FallbackThumb(icon: Icons.broken_image_rounded);
   }
 
-  Widget _buildStatusWidget(BuildContext context, ThemeData theme) {
+  Widget _buildStatusWidget(BuildContext context) {
     final isInfoTapEnabled =
         record.status == ImageRecordStatus.error &&
         record.errorMessage != null &&
         record.errorMessage!.isNotEmpty;
 
-    final chip = _StatusChip(status: record.status);
+    final chip = _StatusPill(status: record.status);
     if (!isInfoTapEnabled) {
       return chip;
     }
@@ -353,37 +315,18 @@ class ImageCell extends ConsumerWidget {
     return '${time.year}-$month-$day $hour:$minute';
   }
 
-  Widget _buildTimeLabel(ThemeData theme, DateTime? requestStartedAt) {
-    final style = theme.textTheme.bodySmall?.copyWith(
-      color: AppThemeTokens.textSecondary,
-    );
-
+  String? _durationLabel(DateTime? requestStartedAt) {
     if (record.status == ImageRecordStatus.loading &&
         requestStartedAt != null) {
-      return StreamBuilder<int>(
-        stream: Stream<int>.periodic(
-          const Duration(seconds: 1),
-          (tick) => tick,
-        ),
-        initialData: 0,
-        builder: (context, snapshot) {
-          return Text(
-            '${_formatTime(record.createdAt)}  ·  已用 ${_elapsedSeconds(requestStartedAt)} 秒',
-            style: style,
-          );
-        },
-      );
+      return '${_elapsedSeconds(requestStartedAt)}s';
     }
 
-    return Text(_staticTimeLabel, style: style);
-  }
-
-  String get _staticTimeLabel {
-    if (record.durationMs == null) {
-      return _formatTime(record.createdAt);
+    final durationMs = record.durationMs;
+    if (durationMs == null) {
+      return null;
     }
 
-    return '${_formatTime(record.createdAt)}  ·  ${(record.durationMs! / 1000).toStringAsFixed(1)}s';
+    return '${(durationMs / 1000).toStringAsFixed(1)}s';
   }
 
   int _elapsedSeconds(DateTime startedAt) {
@@ -398,28 +341,123 @@ class ImageCell extends ConsumerWidget {
     }
     return '未知';
   }
+
+  String _compactLabel(String value) {
+    final trimmed = value.trim();
+    if (trimmed.length <= 8) {
+      return trimmed;
+    }
+    return '${trimmed.substring(0, 7)}…';
+  }
 }
 
-class _ImageThumb extends StatelessWidget {
-  const _ImageThumb({required this.size, required this.child});
+class _MetaOverlay extends StatelessWidget {
+  const _MetaOverlay({required this.chips});
 
-  final double size;
-  final Widget child;
+  final List<Widget> chips;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppDecorations.softShadow,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0),
+            Colors.black.withValues(alpha: 0.58),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: child),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(5, 14, 5, 5),
+        child: Wrap(spacing: 4, runSpacing: 4, children: chips),
+      ),
     );
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
+class _ActualImageSizeChip extends StatelessWidget {
+  const _ActualImageSizeChip({required this.record});
+
+  final ImageRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _resolveSizeLabel(),
+      builder: (context, snapshot) {
+        return _OverlayChip(
+          icon: Icons.photo_size_select_actual_rounded,
+          label: snapshot.data ?? '--',
+        );
+      },
+    );
+  }
+
+  Future<String?> _resolveSizeLabel() async {
+    if (record.status == ImageRecordStatus.loading ||
+        record.status == ImageRecordStatus.pending) {
+      return null;
+    }
+
+    final provider = _imageProvider();
+    if (provider == null) {
+      return null;
+    }
+
+    final info = await _resolveImageInfo(provider);
+    final width = info.image.width;
+    final height = info.image.height;
+    info.dispose();
+    return '$width×$height';
+  }
+
+  ImageProvider? _imageProvider() {
+    final resultImagePath = record.resultImagePath;
+    if (resultImagePath != null && File(resultImagePath).existsSync()) {
+      return FileImage(File(resultImagePath));
+    }
+
+    final sourceImagePath = record.sourceImagePath;
+    if (sourceImagePath != null && File(sourceImagePath).existsSync()) {
+      return FileImage(File(sourceImagePath));
+    }
+
+    final resultImageUrl = record.resultImageUrl;
+    if (resultImageUrl != null && resultImageUrl.isNotEmpty) {
+      return CachedNetworkImageProvider(resultImageUrl);
+    }
+
+    return null;
+  }
+
+  Future<ImageInfo> _resolveImageInfo(ImageProvider provider) {
+    final completer = Completer<ImageInfo>();
+    final stream = provider.resolve(const ImageConfiguration());
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (image, synchronousCall) {
+        if (!completer.isCompleted) {
+          completer.complete(image);
+        }
+        stream.removeListener(listener);
+      },
+      onError: (error, stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    return completer.future;
+  }
+}
+
+class _OverlayChip extends StatelessWidget {
+  const _OverlayChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -427,22 +465,29 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      constraints: const BoxConstraints(maxWidth: 94),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: AppThemeTokens.surfaceSoft,
+        color: Colors.white.withValues(alpha: 0.86),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: AppThemeTokens.primaryStrong),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppThemeTokens.primaryStrong,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
+          Icon(icon, size: 10, color: AppThemeTokens.primaryStrong),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppThemeTokens.primaryStrong,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+                height: 1,
+              ),
             ),
           ),
         ],
@@ -451,8 +496,8 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
 
   final ImageRecordStatus status;
 
@@ -464,31 +509,64 @@ class _StatusChip extends StatelessWidget {
     switch (status) {
       case ImageRecordStatus.pending:
       case ImageRecordStatus.loading:
-        backgroundColor = AppThemeTokens.surfaceSoft;
+        backgroundColor = Colors.white.withValues(alpha: 0.92);
         foregroundColor = AppThemeTokens.primaryStrong;
       case ImageRecordStatus.done:
-        backgroundColor = const Color(0xFFE4F6EE);
+        backgroundColor = const Color(0xFFE4F6EE).withValues(alpha: 0.94);
         foregroundColor = const Color(0xFF177245);
       case ImageRecordStatus.error:
-        backgroundColor = AppThemeTokens.dangerSurface;
+        backgroundColor = AppThemeTokens.dangerSurface.withValues(alpha: 0.96);
         foregroundColor = AppThemeTokens.dangerText;
       case ImageRecordStatus.cancelled:
-        backgroundColor = const Color(0xFFFFF0D8);
+        backgroundColor = const Color(0xFFFFF0D8).withValues(alpha: 0.96);
         foregroundColor = const Color(0xFF935E00);
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      child: Text(
-        status.label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: foregroundColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Text(
+          status.label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: foregroundColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+            height: 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingThumb extends StatelessWidget {
+  const _LoadingThumb();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppThemeTokens.surfaceSoft, AppThemeTokens.primarySoft],
+        ),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.4),
         ),
       ),
     );
@@ -496,21 +574,15 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _FallbackThumb extends StatelessWidget {
-  const _FallbackThumb({required this.size, required this.icon});
+  const _FallbackThumb({required this.icon});
 
-  final double size;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: AppThemeTokens.surfaceSoft,
-      ),
-      child: Icon(icon, color: AppThemeTokens.primary),
+    return ColoredBox(
+      color: AppThemeTokens.surfaceSoft,
+      child: Center(child: Icon(icon, color: AppThemeTokens.primary)),
     );
   }
 }

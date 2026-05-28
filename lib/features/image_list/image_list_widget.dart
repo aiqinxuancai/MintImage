@@ -45,23 +45,78 @@ class ImageListWidget extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () => ref.read(imageListProvider.notifier).reload(),
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-        itemCount: records.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final record = records[index];
-          return ImageCell(
-            record: record,
-            onReusePrompt: () => onReusePrompt(record),
-            onReuseEdit: () => onReuseEdit(record),
-            onRetry: () => onRetryRecord(record),
-            onCancel: () => onCancelRecord(record.id),
-            onDelete: () => onDeleteRecord(record),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final metrics = _GridMetrics.fromContext(
+            context,
+            constraints.maxWidth,
+          );
+          return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              metrics.sidePadding,
+              10,
+              metrics.sidePadding,
+              12,
+            ),
+            itemCount: records.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: metrics.columnCount,
+              crossAxisSpacing: metrics.gap,
+              mainAxisSpacing: metrics.gap,
+              mainAxisExtent: metrics.cellHeight,
+            ),
+            itemBuilder: (context, index) {
+              final record = records[index];
+              return ImageCell(
+                record: record,
+                imageHeight: metrics.imageHeight,
+                onReusePrompt: () => onReusePrompt(record),
+                onReuseEdit: () => onReuseEdit(record),
+                onRetry: () => onRetryRecord(record),
+                onCancel: () => onCancelRecord(record.id),
+                onDelete: () => onDeleteRecord(record),
+              );
+            },
           );
         },
       ),
+    );
+  }
+}
+
+class _GridMetrics {
+  const _GridMetrics({
+    required this.columnCount,
+    required this.cellHeight,
+    required this.imageHeight,
+    required this.sidePadding,
+    required this.gap,
+  });
+
+  final int columnCount;
+  final double cellHeight;
+  final double imageHeight;
+  final double sidePadding;
+  final double gap;
+
+  static _GridMetrics fromContext(BuildContext context, double width) {
+    final screen = MediaQuery.sizeOf(context);
+    final isPhone = screen.shortestSide < 600;
+    final sidePadding = isPhone ? 10.0 : 14.0;
+    final gap = isPhone ? 8.0 : 10.0;
+    final availableWidth = width - sidePadding * 2;
+    final desktopColumnCount = (availableWidth / 206).floor();
+    final columnCount = isPhone ? 2 : desktopColumnCount.clamp(2, 10).toInt();
+    final imageHeight = isPhone ? 188.0 : 206.0;
+    const footerHeight = 68.0;
+
+    return _GridMetrics(
+      columnCount: columnCount,
+      cellHeight: imageHeight + footerHeight,
+      imageHeight: imageHeight,
+      sidePadding: sidePadding,
+      gap: gap,
     );
   }
 }
