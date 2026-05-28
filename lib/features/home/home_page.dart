@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/generation_request.dart';
 import '../../core/models/image_record.dart';
 import '../../core/providers/generation_provider.dart';
 import '../../core/providers/image_list_provider.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../core/providers/update_check_provider.dart';
+import '../../core/version/app_version.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../image_list/image_list_widget.dart';
@@ -22,10 +27,14 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   final GlobalKey<BottomInputBarState> _inputBarKey =
       GlobalKey<BottomInputBarState>();
+  bool _selectionMode = false;
+  Set<String> _selectedRecordIds = const <String>{};
+  int _attachmentCount = 0;
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final updateState = ref.watch(updateCheckProvider);
     final hasApiKey = settings.activeProfile.apiKey.trim().isNotEmpty;
 
     return Scaffold(
@@ -35,9 +44,18 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'MintImage',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'MintImage',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (updateState.hasUpdate) ...[
+                  const SizedBox(width: 8),
+                  _NewVersionBadge(onTap: () => _handleUpdateTap(updateState)),
+                ],
+              ],
             ),
             Text(
               hasApiKey ? '生成与改图工作台' : '先完成 API 配置即可开始使用',
@@ -46,6 +64,25 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
         actions: [
+          if (_selectionMode && _selectedRecordIds.isNotEmpty)
+            IconButton(
+              tooltip: '删除选中图像',
+              onPressed: _confirmDeleteSelectedRecords,
+              icon: const Icon(Icons.delete_rounded),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: _selectionMode
+                ? IconButton(
+                    tooltip: '取消选择',
+                    onPressed: _exitSelectionMode,
+                    icon: const Icon(Icons.close_rounded),
+                  )
+                : TextButton(
+                    onPressed: _enterSelectionMode,
+                    child: const Text('选择'),
+                  ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -107,11 +144,25 @@ class _HomePageState extends ConsumerState<HomePage> {
                             onRetryRecord: _retryRecord,
                             onCancelRecord: _cancelRecord,
                             onDeleteRecord: _deleteRecord,
+                            currentAttachmentCount: _attachmentCount,
+                            onAppendRecordToAttachments:
+                                _appendRecordToAttachments,
+                            selectionMode: _selectionMode,
+                            selectedRecordIds: _selectedRecordIds,
+                            onToggleSelection: _toggleRecordSelection,
+                            onSelectRecord: _selectRecord,
                           ),
                         ),
                         BottomInputBar(
                           key: _inputBarKey,
                           onSubmit: _submitRequest,
+                          onAttachmentCountChanged: (count) {
+                            if (mounted) {
+                              setState(() {
+                                _attachmentCount = count;
+                              });
+                            }
+                          },
                         ),
                       ],
                     )
@@ -150,10 +201,181 @@ class _HomePageState extends ConsumerState<HomePage> {
     await ref.read(imageListProvider.notifier).removeRecord(record.id);
   }
 
+  Future<void> _appendRecordToAttachments(ImageRecord record) async {
+    final added = await _inputBarKey.currentState?.appendImageFromRecord(
+      record,
+    );
+    if (added != true || !mounted) {
+      return;
+    }
+
+    final count =
+        _inputBarKey.currentState?.attachmentCount ?? _attachmentCount;
+    setState(() {
+      _attachmentCount = count;
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('已添加到附件$count。')));
+  }
+
+  void _enterSelectionMode() {
+    setState(() {
+      _selectionMode = true;
+      _selectedRecordIds = const <String>{};
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _selectionMode = false;
+      _selectedRecordIds = const <String>{};
+    });
+  }
+
+  void _toggleRecordSelection(String recordId) {
+    if (!_selectionMode) {
+      return;
+    }
+
+    final selected = {..._selectedRecordIds};
+    if (!selected.add(recordId)) {
+      selected.remove(recordId);
+    }
+    setState(() {
+      _selectedRecordIds = selected;
+    });
+  }
+
+  void _selectRecord(String recordId) {
+    if (!_selectionMode || _selectedRecordIds.contains(recordId)) {
+      return;
+    }
+
+    setState(() {
+      _selectedRecordIds = {..._selectedRecordIds, recordId};
+    });
+  }
+
+  Future<void> _confirmDeleteSelectedRecords() async {
+    final selectedCount = _selectedRecordIds.length;
+    if (selectedCount == 0) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('删除图像'),
+          content: Text('确认删除这 $selectedCount 个图像？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    final selectedIds = {..._selectedRecordIds};
+    final records = ref
+        .read(imageListProvider)
+        .where((record) => selectedIds.contains(record.id))
+        .toList();
+
+    _exitSelectionMode();
+
+    for (final record in records) {
+      await _deleteRecord(record);
+    }
+  }
+
   Future<void> _openSettings() async {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const SettingsPage()));
+  }
+
+  Future<void> _handleUpdateTap(UpdateCheckState updateState) async {
+    if (!updateState.hasUpdate) {
+      return;
+    }
+
+    if (Platform.isIOS) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('发现新版本'),
+            content: Text(
+              '有新的版本 ${updateState.latestVersion ?? ''}，请前往 ${AppVersion.repositoryUrl} 下载。',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('知道了'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    var launched = false;
+    try {
+      final uri = Uri.parse(updateState.releaseUrl);
+      launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      launched = false;
+    }
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('无法打开下载页：${updateState.releaseUrl}')),
+      );
+    }
+  }
+}
+
+class _NewVersionBadge extends StatelessWidget {
+  const _NewVersionBadge({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE4F6EE),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFF93D7B5)),
+        ),
+        child: Text(
+          'New',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: const Color(0xFF177245),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+            height: 1,
+          ),
+        ),
+      ),
+    );
   }
 }
 

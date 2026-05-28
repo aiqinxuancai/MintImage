@@ -19,9 +19,14 @@ import 'quantity_selector.dart';
 import 'size_selector.dart';
 
 class BottomInputBar extends ConsumerStatefulWidget {
-  const BottomInputBar({super.key, required this.onSubmit});
+  const BottomInputBar({
+    super.key,
+    required this.onSubmit,
+    this.onAttachmentCountChanged,
+  });
 
   final Future<void> Function(GenerationRequest request) onSubmit;
+  final ValueChanged<int>? onAttachmentCountChanged;
 
   @override
   ConsumerState<BottomInputBar> createState() => BottomInputBarState();
@@ -38,6 +43,8 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   int _customHeight = 0;
   bool _submitting = false;
   List<PickedAttachment> _attachments = const [];
+
+  int get attachmentCount => _attachments.length;
 
   @override
   void dispose() {
@@ -72,6 +79,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       _sizePreset = _matchingSizePreset(record.width, record.height);
       _customWidth = record.width;
       _customHeight = record.height;
+      _count = 1;
     });
 
     await _prefillAttachments(
@@ -79,6 +87,26 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
           ? record.sourceAttachmentPaths
           : [record.resultImagePath!],
     );
+  }
+
+  Future<bool> appendImageFromRecord(ImageRecord record) async {
+    final path = _attachmentPathForRecord(record);
+    if (path == null) {
+      _showMessage('这条记录没有可加入附件的本地图片。');
+      return false;
+    }
+
+    final attachment = await PickedAttachment.fromExistingPath(path);
+    if (!mounted) {
+      return false;
+    }
+    if (attachment == null) {
+      _showMessage('图片文件不存在，无法加入附件。');
+      return false;
+    }
+
+    _setAttachments([..._attachments, attachment]);
+    return true;
   }
 
   Future<void> _prefillAttachments(List<String> paths) async {
@@ -94,9 +122,37 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       return;
     }
 
+    _setAttachments(attachments);
+  }
+
+  String? _attachmentPathForRecord(ImageRecord record) {
+    final resultImagePath = record.resultImagePath;
+    if (resultImagePath != null && File(resultImagePath).existsSync()) {
+      return resultImagePath;
+    }
+
+    final sourceImagePath = record.sourceImagePath;
+    if (sourceImagePath != null && File(sourceImagePath).existsSync()) {
+      return sourceImagePath;
+    }
+
+    for (final path in record.sourceAttachmentPaths) {
+      if (File(path).existsSync()) {
+        return path;
+      }
+    }
+
+    return null;
+  }
+
+  void _setAttachments(List<PickedAttachment> attachments) {
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _attachments = attachments;
     });
+    widget.onAttachmentCountChanged?.call(_attachments.length);
   }
 
   SizePreset _matchingSizePreset(int width, int height) {
@@ -142,12 +198,10 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                         AttachmentPreviewStrip(
                           attachments: _attachments,
                           onRemove: (index) {
-                            setState(() {
-                              _attachments = [
-                                for (int i = 0; i < _attachments.length; i++)
-                                  if (i != index) _attachments[i],
-                              ];
-                            });
+                            _setAttachments([
+                              for (int i = 0; i < _attachments.length; i++)
+                                if (i != index) _attachments[i],
+                            ]);
                           },
                         ),
                       ],
@@ -195,7 +249,10 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                     currentHeight: _customHeight,
                                     onSizeSelected: (width, height) {
                                       setState(() {
-                                        _sizePreset = _matchingSizePreset(width, height);
+                                        _sizePreset = _matchingSizePreset(
+                                          width,
+                                          height,
+                                        );
                                         _customWidth = width;
                                         _customHeight = height;
                                       });
@@ -230,7 +287,10 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                             child: IconButton(
                               tooltip: '添加图片',
                               onPressed: _submitting ? null : _pickAttachments,
-                              icon: const Icon(Icons.attach_file_rounded, size: 20),
+                              icon: const Icon(
+                                Icons.attach_file_rounded,
+                                size: 20,
+                              ),
                               padding: EdgeInsets.zero,
                               style: IconButton.styleFrom(
                                 backgroundColor: AppThemeTokens.surfaceSoft,
@@ -326,9 +386,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       return;
     }
 
-    setState(() {
-      _attachments = [..._attachments, ...valid];
-    });
+    _setAttachments([..._attachments, ...valid]);
   }
 
   Future<void> _submit() async {
@@ -369,9 +427,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       );
 
       _promptController.clear();
-      setState(() {
-        _attachments = const [];
-      });
+      _setAttachments(const []);
     } on ApiException catch (error) {
       _showMessage(error.message);
     } catch (error) {

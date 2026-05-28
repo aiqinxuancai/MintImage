@@ -21,6 +21,11 @@ class ImageCell extends ConsumerWidget {
     required this.onRetry,
     required this.onCancel,
     required this.onDelete,
+    required this.selectionMode,
+    required this.selected,
+    required this.onSelectionToggle,
+    required this.currentAttachmentCount,
+    required this.onAppendCurrentImageToAttachments,
   });
 
   final ImageRecord record;
@@ -30,6 +35,11 @@ class ImageCell extends ConsumerWidget {
   final VoidCallback onRetry;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback onSelectionToggle;
+  final int currentAttachmentCount;
+  final VoidCallback onAppendCurrentImageToAttachments;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,7 +53,10 @@ class ImageCell extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        onLongPress: () => _showActions(context),
+        onTap: selectionMode ? onSelectionToggle : null,
+        onLongPress: selectionMode
+            ? onSelectionToggle
+            : () => _showActions(context),
         child: DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(
@@ -58,8 +71,14 @@ class ImageCell extends ConsumerWidget {
                 height: imageHeight,
                 width: double.infinity,
                 child: InkWell(
-                  onTap: _canPreview ? () => _openPreview(context) : null,
-                  onLongPress: () => _showActions(context),
+                  onTap: selectionMode
+                      ? null
+                      : _canPreview
+                      ? () => _openPreview(context)
+                      : null,
+                  onLongPress: selectionMode
+                      ? null
+                      : () => _showActions(context),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -107,6 +126,10 @@ class ImageCell extends ConsumerWidget {
                           ],
                         ),
                       ),
+                      if (selectionMode)
+                        Positioned.fill(
+                          child: _SelectionOverlay(selected: selected),
+                        ),
                     ],
                   ),
                 ),
@@ -128,15 +151,22 @@ class ImageCell extends ConsumerWidget {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        _formatTime(record.createdAt),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: AppThemeTokens.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _formatTime(record.createdAt),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppThemeTokens.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ),
+                          if (selectionMode) _SelectionDot(selected: selected),
+                        ],
                       ),
                     ],
                   ),
@@ -246,6 +276,15 @@ class ImageCell extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).pop();
                     onReuseEdit();
+                  },
+                ),
+              if (currentAttachmentCount > 0)
+                ListTile(
+                  leading: const Icon(Icons.add_photo_alternate_rounded),
+                  title: Text('将此图添加到附件${currentAttachmentCount + 1}'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    onAppendCurrentImageToAttachments();
                   },
                 ),
               if (record.status == ImageRecordStatus.loading ||
@@ -359,6 +398,70 @@ class _MetaOverlay extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(5, 14, 5, 5),
         child: Wrap(spacing: 4, runSpacing: 4, children: chips),
       ),
+    );
+  }
+}
+
+class _SelectionOverlay extends StatelessWidget {
+  const _SelectionOverlay({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppThemeTokens.primary.withValues(alpha: 0.18)
+              : Colors.black.withValues(alpha: 0.06),
+          border: Border.all(
+            color: selected ? AppThemeTokens.primary : Colors.transparent,
+            width: 3,
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(7),
+            child: _SelectionDot(selected: selected),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectionDot extends StatelessWidget {
+  const _SelectionDot({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: selected ? AppThemeTokens.primary : Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: selected ? AppThemeTokens.primary : AppThemeTokens.border,
+          width: 2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: selected
+          ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+          : null,
     );
   }
 }

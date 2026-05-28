@@ -17,10 +17,6 @@ class AttachmentPreviewStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = attachments.take(5).toList();
-    final extraCount = attachments.length - visibleItems.length;
-    final totalWidth = 44 + ((visibleItems.length - 1).clamp(0, 4) * 30);
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -31,40 +27,29 @@ class AttachmentPreviewStrip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            height: 44,
-            width: totalWidth.toDouble(),
-            child: Stack(
-              children: [
-                for (int index = 0; index < visibleItems.length; index++)
-                  Positioned(
-                    left: index * 30,
-                    child: _AttachmentThumb(
-                      attachment: visibleItems[index],
-                      onRemove: () => onRemove(index),
-                    ),
-                  ),
-                if (extraCount > 0)
-                  Positioned(
-                    left: visibleItems.length * 30,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: AppThemeTokens.primary,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: SizedBox(
+              height: 44,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (
+                      int index = 0;
+                      index < attachments.length;
+                      index += 1
+                    ) ...[
+                      _AttachmentThumb(
+                        attachment: attachments[index],
+                        onRemove: () => onRemove(index),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '+$extraCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+                      if (index != attachments.length - 1)
+                        const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
