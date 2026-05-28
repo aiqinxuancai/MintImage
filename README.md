@@ -20,8 +20,8 @@
 
 ```bash
 # 克隆
-git clone https://github.com/aiqinxuancai/gpt-image-flutter.git
-cd gpt-image-flutter
+git clone https://github.com/aiqinxuancai/MintImage.git
+cd MintImage
 
 # 安装依赖
 flutter pub get

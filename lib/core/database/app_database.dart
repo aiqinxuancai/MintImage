@@ -7,6 +7,9 @@ import 'package:path_provider/path_provider.dart';
 
 part 'app_database.g.dart';
 
+const _databaseFileName = 'mint_image.sqlite';
+const _legacyDatabaseFileName = 'gpt_image_flutter.sqlite';
+
 class ImageRecordsTable extends Table {
   TextColumn get id => text()();
 
@@ -53,9 +56,29 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory = await getApplicationSupportDirectory();
     await directory.create(recursive: true);
-    final file = File(p.join(directory.path, 'gpt_image_flutter.sqlite'));
+    final file = File(p.join(directory.path, _databaseFileName));
+    await _copyLegacyDatabaseIfNeeded(directory, file);
     return NativeDatabase.createInBackground(file);
   });
+}
+
+Future<void> _copyLegacyDatabaseIfNeeded(Directory directory, File file) async {
+  if (await file.exists()) {
+    return;
+  }
+
+  final legacyFile = File(p.join(directory.path, _legacyDatabaseFileName));
+  if (!await legacyFile.exists()) {
+    return;
+  }
+
+  await legacyFile.copy(file.path);
+  for (final suffix in ['-wal', '-shm']) {
+    final legacySidecar = File('${legacyFile.path}$suffix');
+    if (await legacySidecar.exists()) {
+      await legacySidecar.copy('${file.path}$suffix');
+    }
+  }
 }
 
 @DriftDatabase(tables: [ImageRecordsTable])
