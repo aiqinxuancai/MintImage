@@ -165,7 +165,6 @@ class ImageCell extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (selectionMode) _SelectionDot(selected: selected),
                         ],
                       ),
                     ],
