@@ -93,8 +93,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                       children: [
                         Expanded(
                           child: ImageListWidget(
-                            onReusePrompt: (prompt) {
-                              _inputBarKey.currentState?.prefillPrompt(prompt);
+                            onReusePrompt: (record) {
+                              _inputBarKey.currentState?.prefillFromRecord(
+                                record,
+                              );
                             },
                             onReuseEdit: (record) {
                               _inputBarKey.currentState?.prefillForEdit(record);

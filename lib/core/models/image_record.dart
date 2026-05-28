@@ -26,6 +26,7 @@ class ImageRecord {
     required this.prompt,
     required this.apiProfileId,
     required this.sourceImagePath,
+    required this.sourceImagePaths,
     required this.resultImagePath,
     required this.resultImageUrl,
     required this.resultB64,
@@ -54,6 +55,7 @@ class ImageRecord {
       sourceImagePath: request.imagePaths.isEmpty
           ? null
           : request.imagePaths[0],
+      sourceImagePaths: request.imagePaths,
       resultImagePath: null,
       resultImageUrl: null,
       resultB64: null,
@@ -74,6 +76,7 @@ class ImageRecord {
   final String prompt;
   final String apiProfileId;
   final String? sourceImagePath;
+  final List<String> sourceImagePaths;
   final String? resultImagePath;
   final String? resultImageUrl;
   final String? resultB64;
@@ -95,6 +98,15 @@ class ImageRecord {
   String get sizeLabel => '$width×$height';
 
   String get qualityLabel => ImageQuality.fromApiValue(quality).label;
+
+  List<String> get sourceAttachmentPaths {
+    if (sourceImagePaths.isNotEmpty) {
+      return sourceImagePaths;
+    }
+
+    final path = sourceImagePath;
+    return path == null || path.isEmpty ? const [] : [path];
+  }
 
   ImageRecord markCancelled() {
     return copyWith(
@@ -121,6 +133,7 @@ class ImageRecord {
     String? prompt,
     String? apiProfileId,
     String? sourceImagePath,
+    List<String>? sourceImagePaths,
     String? resultImagePath,
     String? resultImageUrl,
     String? resultB64,
@@ -145,6 +158,7 @@ class ImageRecord {
       prompt: prompt ?? this.prompt,
       apiProfileId: apiProfileId ?? this.apiProfileId,
       sourceImagePath: sourceImagePath ?? this.sourceImagePath,
+      sourceImagePaths: sourceImagePaths ?? this.sourceImagePaths,
       resultImagePath: clearResultImagePath
           ? null
           : resultImagePath ?? this.resultImagePath,

@@ -8,6 +8,7 @@ void main() {
       prompt: 'calm sky',
       apiProfileId: 'default',
       sourceImagePath: 'source.png',
+      sourceImagePaths: const ['source.png'],
       resultImagePath: 'result.png',
       resultImageUrl: 'https://example.com/result.png',
       resultB64: 'abc123',
@@ -33,6 +34,7 @@ void main() {
     expect(cancelled.rawApiResponseValue, isNull);
     expect(cancelled.usedSingleImageFallback, isFalse);
     expect(cancelled.sourceImagePath, 'source.png');
+    expect(cancelled.sourceImagePaths, const ['source.png']);
     expect(cancelled.durationMs, 1234);
   });
 
@@ -42,6 +44,7 @@ void main() {
       prompt: 'ocean',
       apiProfileId: 'default',
       sourceImagePath: null,
+      sourceImagePaths: const [],
       resultImagePath: null,
       resultImageUrl: null,
       resultB64: null,
@@ -61,6 +64,7 @@ void main() {
       prompt: 'forest',
       apiProfileId: 'default',
       sourceImagePath: null,
+      sourceImagePaths: const [],
       resultImagePath: 'result.png',
       resultImageUrl: null,
       resultB64: null,

@@ -16,6 +16,8 @@ class ImageRecordsTable extends Table {
 
   TextColumn get sourceImagePath => text().nullable()();
 
+  TextColumn get sourceImagePaths => text().nullable()();
+
   TextColumn get resultImagePath => text().nullable()();
 
   TextColumn get resultImageUrl => text().nullable()();
@@ -61,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -80,6 +82,12 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(
           imageRecordsTable,
           imageRecordsTable.rawApiResponseValue,
+        );
+      }
+      if (from < 4) {
+        await migrator.addColumn(
+          imageRecordsTable,
+          imageRecordsTable.sourceImagePaths,
         );
       }
     },

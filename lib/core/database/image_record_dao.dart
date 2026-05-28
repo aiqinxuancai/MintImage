@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../models/image_record.dart';
@@ -51,6 +53,7 @@ class ImageRecordDao {
       prompt: row.prompt,
       apiProfileId: row.apiProfileId,
       sourceImagePath: row.sourceImagePath,
+      sourceImagePaths: _decodeSourceImagePaths(row.sourceImagePaths),
       resultImagePath: row.resultImagePath,
       resultImageUrl: row.resultImageUrl,
       resultB64: row.resultB64,
@@ -73,6 +76,7 @@ class ImageRecordDao {
       prompt: Value(record.prompt),
       apiProfileId: Value(record.apiProfileId),
       sourceImagePath: Value(record.sourceImagePath),
+      sourceImagePaths: Value(_encodeSourceImagePaths(record.sourceImagePaths)),
       resultImagePath: Value(record.resultImagePath),
       resultImageUrl: Value(record.resultImageUrl),
       resultB64: Value(record.resultB64),
@@ -87,5 +91,31 @@ class ImageRecordDao {
       durationMs: Value(record.durationMs),
       usedSingleImageFallback: Value(record.usedSingleImageFallback),
     );
+  }
+
+  List<String> _decodeSourceImagePaths(String? value) {
+    if (value == null || value.isEmpty) {
+      return const [];
+    }
+
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(value);
+    } on FormatException {
+      return const [];
+    }
+    if (decoded is! List) {
+      return const [];
+    }
+
+    return decoded.whereType<String>().toList(growable: false);
+  }
+
+  String? _encodeSourceImagePaths(List<String> paths) {
+    if (paths.isEmpty) {
+      return null;
+    }
+
+    return jsonEncode(paths);
   }
 }

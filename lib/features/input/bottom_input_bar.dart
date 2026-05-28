@@ -58,6 +58,11 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     setState(() {});
   }
 
+  Future<void> prefillFromRecord(ImageRecord record) async {
+    prefillPrompt(record.prompt);
+    await _prefillAttachments(record.sourceAttachmentPaths);
+  }
+
   Future<void> prefillForEdit(ImageRecord record) async {
     prefillPrompt(record.prompt);
     if (!mounted) {
@@ -70,18 +75,28 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       _customHeight = record.height;
     });
 
-    final sourcePath = record.resultImagePath ?? record.sourceImagePath;
-    if (sourcePath == null) {
-      return;
+    await _prefillAttachments(
+      record.resultImagePath == null
+          ? record.sourceAttachmentPaths
+          : [record.resultImagePath!],
+    );
+  }
+
+  Future<void> _prefillAttachments(List<String> paths) async {
+    final attachments = <PickedAttachment>[];
+    for (final path in paths) {
+      final attachment = await PickedAttachment.fromExistingPath(path);
+      if (attachment != null) {
+        attachments.add(attachment);
+      }
     }
 
-    final attachment = await PickedAttachment.fromExistingPath(sourcePath);
-    if (!mounted || attachment == null) {
+    if (!mounted) {
       return;
     }
 
     setState(() {
-      _attachments = [attachment];
+      _attachments = attachments;
     });
   }
 

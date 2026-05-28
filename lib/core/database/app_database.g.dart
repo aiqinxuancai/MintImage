@@ -50,6 +50,17 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceImagePathsMeta = const VerificationMeta(
+    'sourceImagePaths',
+  );
+  @override
+  late final GeneratedColumn<String> sourceImagePaths = GeneratedColumn<String>(
+    'source_image_paths',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _resultImagePathMeta = const VerificationMeta(
     'resultImagePath',
   );
@@ -195,6 +206,7 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     prompt,
     apiProfileId,
     sourceImagePath,
+    sourceImagePaths,
     resultImagePath,
     resultImageUrl,
     resultB64,
@@ -249,6 +261,15 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         sourceImagePath.isAcceptableOrUnknown(
           data['source_image_path']!,
           _sourceImagePathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_image_paths')) {
+      context.handle(
+        _sourceImagePathsMeta,
+        sourceImagePaths.isAcceptableOrUnknown(
+          data['source_image_paths']!,
+          _sourceImagePathsMeta,
         ),
       );
     }
@@ -382,6 +403,10 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         DriftSqlType.string,
         data['${effectivePrefix}source_image_path'],
       ),
+      sourceImagePaths: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_image_paths'],
+      ),
       resultImagePath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}result_image_path'],
@@ -449,6 +474,7 @@ class ImageRecordsTableData extends DataClass
   final String prompt;
   final String apiProfileId;
   final String? sourceImagePath;
+  final String? sourceImagePaths;
   final String? resultImagePath;
   final String? resultImageUrl;
   final String? resultB64;
@@ -467,6 +493,7 @@ class ImageRecordsTableData extends DataClass
     required this.prompt,
     required this.apiProfileId,
     this.sourceImagePath,
+    this.sourceImagePaths,
     this.resultImagePath,
     this.resultImageUrl,
     this.resultB64,
@@ -489,6 +516,9 @@ class ImageRecordsTableData extends DataClass
     map['api_profile_id'] = Variable<String>(apiProfileId);
     if (!nullToAbsent || sourceImagePath != null) {
       map['source_image_path'] = Variable<String>(sourceImagePath);
+    }
+    if (!nullToAbsent || sourceImagePaths != null) {
+      map['source_image_paths'] = Variable<String>(sourceImagePaths);
     }
     if (!nullToAbsent || resultImagePath != null) {
       map['result_image_path'] = Variable<String>(resultImagePath);
@@ -526,6 +556,9 @@ class ImageRecordsTableData extends DataClass
       sourceImagePath: sourceImagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceImagePath),
+      sourceImagePaths: sourceImagePaths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceImagePaths),
       resultImagePath: resultImagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(resultImagePath),
@@ -564,6 +597,7 @@ class ImageRecordsTableData extends DataClass
       prompt: serializer.fromJson<String>(json['prompt']),
       apiProfileId: serializer.fromJson<String>(json['apiProfileId']),
       sourceImagePath: serializer.fromJson<String?>(json['sourceImagePath']),
+      sourceImagePaths: serializer.fromJson<String?>(json['sourceImagePaths']),
       resultImagePath: serializer.fromJson<String?>(json['resultImagePath']),
       resultImageUrl: serializer.fromJson<String?>(json['resultImageUrl']),
       resultB64: serializer.fromJson<String?>(json['resultB64']),
@@ -591,6 +625,7 @@ class ImageRecordsTableData extends DataClass
       'prompt': serializer.toJson<String>(prompt),
       'apiProfileId': serializer.toJson<String>(apiProfileId),
       'sourceImagePath': serializer.toJson<String?>(sourceImagePath),
+      'sourceImagePaths': serializer.toJson<String?>(sourceImagePaths),
       'resultImagePath': serializer.toJson<String?>(resultImagePath),
       'resultImageUrl': serializer.toJson<String?>(resultImageUrl),
       'resultB64': serializer.toJson<String?>(resultB64),
@@ -614,6 +649,7 @@ class ImageRecordsTableData extends DataClass
     String? prompt,
     String? apiProfileId,
     Value<String?> sourceImagePath = const Value.absent(),
+    Value<String?> sourceImagePaths = const Value.absent(),
     Value<String?> resultImagePath = const Value.absent(),
     Value<String?> resultImageUrl = const Value.absent(),
     Value<String?> resultB64 = const Value.absent(),
@@ -634,6 +670,9 @@ class ImageRecordsTableData extends DataClass
     sourceImagePath: sourceImagePath.present
         ? sourceImagePath.value
         : this.sourceImagePath,
+    sourceImagePaths: sourceImagePaths.present
+        ? sourceImagePaths.value
+        : this.sourceImagePaths,
     resultImagePath: resultImagePath.present
         ? resultImagePath.value
         : this.resultImagePath,
@@ -665,6 +704,9 @@ class ImageRecordsTableData extends DataClass
       sourceImagePath: data.sourceImagePath.present
           ? data.sourceImagePath.value
           : this.sourceImagePath,
+      sourceImagePaths: data.sourceImagePaths.present
+          ? data.sourceImagePaths.value
+          : this.sourceImagePaths,
       resultImagePath: data.resultImagePath.present
           ? data.resultImagePath.value
           : this.resultImagePath,
@@ -700,6 +742,7 @@ class ImageRecordsTableData extends DataClass
           ..write('prompt: $prompt, ')
           ..write('apiProfileId: $apiProfileId, ')
           ..write('sourceImagePath: $sourceImagePath, ')
+          ..write('sourceImagePaths: $sourceImagePaths, ')
           ..write('resultImagePath: $resultImagePath, ')
           ..write('resultImageUrl: $resultImageUrl, ')
           ..write('resultB64: $resultB64, ')
@@ -723,6 +766,7 @@ class ImageRecordsTableData extends DataClass
     prompt,
     apiProfileId,
     sourceImagePath,
+    sourceImagePaths,
     resultImagePath,
     resultImageUrl,
     resultB64,
@@ -745,6 +789,7 @@ class ImageRecordsTableData extends DataClass
           other.prompt == this.prompt &&
           other.apiProfileId == this.apiProfileId &&
           other.sourceImagePath == this.sourceImagePath &&
+          other.sourceImagePaths == this.sourceImagePaths &&
           other.resultImagePath == this.resultImagePath &&
           other.resultImageUrl == this.resultImageUrl &&
           other.resultB64 == this.resultB64 &&
@@ -766,6 +811,7 @@ class ImageRecordsTableCompanion
   final Value<String> prompt;
   final Value<String> apiProfileId;
   final Value<String?> sourceImagePath;
+  final Value<String?> sourceImagePaths;
   final Value<String?> resultImagePath;
   final Value<String?> resultImageUrl;
   final Value<String?> resultB64;
@@ -785,6 +831,7 @@ class ImageRecordsTableCompanion
     this.prompt = const Value.absent(),
     this.apiProfileId = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
+    this.sourceImagePaths = const Value.absent(),
     this.resultImagePath = const Value.absent(),
     this.resultImageUrl = const Value.absent(),
     this.resultB64 = const Value.absent(),
@@ -805,6 +852,7 @@ class ImageRecordsTableCompanion
     required String prompt,
     this.apiProfileId = const Value.absent(),
     this.sourceImagePath = const Value.absent(),
+    this.sourceImagePaths = const Value.absent(),
     this.resultImagePath = const Value.absent(),
     this.resultImageUrl = const Value.absent(),
     this.resultB64 = const Value.absent(),
@@ -832,6 +880,7 @@ class ImageRecordsTableCompanion
     Expression<String>? prompt,
     Expression<String>? apiProfileId,
     Expression<String>? sourceImagePath,
+    Expression<String>? sourceImagePaths,
     Expression<String>? resultImagePath,
     Expression<String>? resultImageUrl,
     Expression<String>? resultB64,
@@ -852,6 +901,7 @@ class ImageRecordsTableCompanion
       if (prompt != null) 'prompt': prompt,
       if (apiProfileId != null) 'api_profile_id': apiProfileId,
       if (sourceImagePath != null) 'source_image_path': sourceImagePath,
+      if (sourceImagePaths != null) 'source_image_paths': sourceImagePaths,
       if (resultImagePath != null) 'result_image_path': resultImagePath,
       if (resultImageUrl != null) 'result_image_url': resultImageUrl,
       if (resultB64 != null) 'result_b64': resultB64,
@@ -876,6 +926,7 @@ class ImageRecordsTableCompanion
     Value<String>? prompt,
     Value<String>? apiProfileId,
     Value<String?>? sourceImagePath,
+    Value<String?>? sourceImagePaths,
     Value<String?>? resultImagePath,
     Value<String?>? resultImageUrl,
     Value<String?>? resultB64,
@@ -896,6 +947,7 @@ class ImageRecordsTableCompanion
       prompt: prompt ?? this.prompt,
       apiProfileId: apiProfileId ?? this.apiProfileId,
       sourceImagePath: sourceImagePath ?? this.sourceImagePath,
+      sourceImagePaths: sourceImagePaths ?? this.sourceImagePaths,
       resultImagePath: resultImagePath ?? this.resultImagePath,
       resultImageUrl: resultImageUrl ?? this.resultImageUrl,
       resultB64: resultB64 ?? this.resultB64,
@@ -928,6 +980,9 @@ class ImageRecordsTableCompanion
     }
     if (sourceImagePath.present) {
       map['source_image_path'] = Variable<String>(sourceImagePath.value);
+    }
+    if (sourceImagePaths.present) {
+      map['source_image_paths'] = Variable<String>(sourceImagePaths.value);
     }
     if (resultImagePath.present) {
       map['result_image_path'] = Variable<String>(resultImagePath.value);
@@ -985,6 +1040,7 @@ class ImageRecordsTableCompanion
           ..write('prompt: $prompt, ')
           ..write('apiProfileId: $apiProfileId, ')
           ..write('sourceImagePath: $sourceImagePath, ')
+          ..write('sourceImagePaths: $sourceImagePaths, ')
           ..write('resultImagePath: $resultImagePath, ')
           ..write('resultImageUrl: $resultImageUrl, ')
           ..write('resultB64: $resultB64, ')
@@ -1022,6 +1078,7 @@ typedef $$ImageRecordsTableTableCreateCompanionBuilder =
       required String prompt,
       Value<String> apiProfileId,
       Value<String?> sourceImagePath,
+      Value<String?> sourceImagePaths,
       Value<String?> resultImagePath,
       Value<String?> resultImageUrl,
       Value<String?> resultB64,
@@ -1043,6 +1100,7 @@ typedef $$ImageRecordsTableTableUpdateCompanionBuilder =
       Value<String> prompt,
       Value<String> apiProfileId,
       Value<String?> sourceImagePath,
+      Value<String?> sourceImagePaths,
       Value<String?> resultImagePath,
       Value<String?> resultImageUrl,
       Value<String?> resultB64,
@@ -1085,6 +1143,11 @@ class $$ImageRecordsTableTableFilterComposer
 
   ColumnFilters<String> get sourceImagePath => $composableBuilder(
     column: $table.sourceImagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceImagePaths => $composableBuilder(
+    column: $table.sourceImagePaths,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1183,6 +1246,11 @@ class $$ImageRecordsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceImagePaths => $composableBuilder(
+    column: $table.sourceImagePaths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get resultImagePath => $composableBuilder(
     column: $table.resultImagePath,
     builder: (column) => ColumnOrderings(column),
@@ -1271,6 +1339,11 @@ class $$ImageRecordsTableTableAnnotationComposer
 
   GeneratedColumn<String> get sourceImagePath => $composableBuilder(
     column: $table.sourceImagePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceImagePaths => $composableBuilder(
+    column: $table.sourceImagePaths,
     builder: (column) => column,
   );
 
@@ -1370,6 +1443,7 @@ class $$ImageRecordsTableTableTableManager
                 Value<String> prompt = const Value.absent(),
                 Value<String> apiProfileId = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
+                Value<String?> sourceImagePaths = const Value.absent(),
                 Value<String?> resultImagePath = const Value.absent(),
                 Value<String?> resultImageUrl = const Value.absent(),
                 Value<String?> resultB64 = const Value.absent(),
@@ -1389,6 +1463,7 @@ class $$ImageRecordsTableTableTableManager
                 prompt: prompt,
                 apiProfileId: apiProfileId,
                 sourceImagePath: sourceImagePath,
+                sourceImagePaths: sourceImagePaths,
                 resultImagePath: resultImagePath,
                 resultImageUrl: resultImageUrl,
                 resultB64: resultB64,
@@ -1410,6 +1485,7 @@ class $$ImageRecordsTableTableTableManager
                 required String prompt,
                 Value<String> apiProfileId = const Value.absent(),
                 Value<String?> sourceImagePath = const Value.absent(),
+                Value<String?> sourceImagePaths = const Value.absent(),
                 Value<String?> resultImagePath = const Value.absent(),
                 Value<String?> resultImageUrl = const Value.absent(),
                 Value<String?> resultB64 = const Value.absent(),
@@ -1429,6 +1505,7 @@ class $$ImageRecordsTableTableTableManager
                 prompt: prompt,
                 apiProfileId: apiProfileId,
                 sourceImagePath: sourceImagePath,
+                sourceImagePaths: sourceImagePaths,
                 resultImagePath: resultImagePath,
                 resultImageUrl: resultImageUrl,
                 resultB64: resultB64,

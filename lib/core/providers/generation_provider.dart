@@ -97,9 +97,7 @@ class GenerationController extends StateNotifier<GenerationState> {
     await submit(
       GenerationRequest(
         prompt: record.prompt,
-        imagePaths: record.sourceImagePath == null
-            ? const []
-            : [record.sourceImagePath!],
+        imagePaths: record.sourceAttachmentPaths,
         sizePreset: SizePreset.custom,
         customWidth: record.width,
         customHeight: record.height,

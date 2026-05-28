@@ -16,7 +16,7 @@ class ImageListWidget extends ConsumerWidget {
     required this.onDeleteRecord,
   });
 
-  final ValueChanged<String> onReusePrompt;
+  final ValueChanged<ImageRecord> onReusePrompt;
   final ValueChanged<ImageRecord> onReuseEdit;
   final ValueChanged<ImageRecord> onRetryRecord;
   final ValueChanged<String> onCancelRecord;
@@ -54,7 +54,7 @@ class ImageListWidget extends ConsumerWidget {
           final record = records[index];
           return ImageCell(
             record: record,
-            onReusePrompt: () => onReusePrompt(record.prompt),
+            onReusePrompt: () => onReusePrompt(record),
             onReuseEdit: () => onReuseEdit(record),
             onRetry: () => onRetryRecord(record),
             onCancel: () => onCancelRecord(record.id),
