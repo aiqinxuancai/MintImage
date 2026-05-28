@@ -44,7 +44,7 @@ class SizeSelector extends StatelessWidget {
             Icon(Icons.aspect_ratio_rounded, size: 13, color: AppThemeTokens.primaryStrong),
             const SizedBox(width: 4),
             Text(
-              '$currentWidth×$currentHeight',
+              currentWidth == 0 ? '自动' : '$currentWidth×$currentHeight',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppThemeTokens.primaryStrong,

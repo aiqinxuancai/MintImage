@@ -1,4 +1,5 @@
 enum SizePreset {
+  auto('auto', '自动', 0, 0),
   square1k('square-1k', '方形成图 1K', 1024, 1024),
   posterPortrait('poster-portrait', '竖版海报', 1024, 1536),
   posterLandscape('poster-landscape', '横版海报', 1536, 1024),
@@ -68,13 +69,15 @@ class GenerationRequest {
 
   bool get hasAttachments => imagePaths.isNotEmpty;
 
+  bool get isAutoSize => sizePreset == SizePreset.auto;
+
   int get resolvedWidth =>
       sizePreset == SizePreset.custom ? customWidth : sizePreset.width;
 
   int get resolvedHeight =>
       sizePreset == SizePreset.custom ? customHeight : sizePreset.height;
 
-  String get apiSize => '${resolvedWidth}x$resolvedHeight';
+  String? get apiSize => isAutoSize ? null : '${resolvedWidth}x$resolvedHeight';
 
   GenerationRequest copyWith({
     String? prompt,

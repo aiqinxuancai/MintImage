@@ -95,7 +95,7 @@ class ImageRecord {
       status == ImageRecordStatus.pending ||
       status == ImageRecordStatus.loading;
 
-  String get sizeLabel => '$width×$height';
+  String get sizeLabel => width == 0 || height == 0 ? '自动' : '$width×$height';
 
   String get qualityLabel => ImageQuality.fromApiValue(quality).label;
 

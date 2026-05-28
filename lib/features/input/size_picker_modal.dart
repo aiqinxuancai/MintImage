@@ -59,7 +59,7 @@ const _presets = <_SizeTier, Map<String, (int, int)>>{
   },
 };
 
-enum _Mode { ratio, custom }
+enum _Mode { auto, ratio, custom }
 
 Future<(int, int)?> showSizePickerModal(
   BuildContext context, {
@@ -91,7 +91,7 @@ class _SizePickerSheet extends StatefulWidget {
 }
 
 class _SizePickerSheetState extends State<_SizePickerSheet> {
-  _Mode _mode = _Mode.ratio;
+  _Mode _mode = _Mode.auto;
   _SizeTier _tier = _SizeTier.k1;
   String _ratio = '1:1';
   late final TextEditingController _wCtrl;
@@ -100,17 +100,26 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
   @override
   void initState() {
     super.initState();
-    _wCtrl = TextEditingController(text: widget.currentWidth.toString());
-    _hCtrl = TextEditingController(text: widget.currentHeight.toString());
+    _wCtrl = TextEditingController(
+      text: widget.currentWidth > 0 ? widget.currentWidth.toString() : '1024',
+    );
+    _hCtrl = TextEditingController(
+      text: widget.currentHeight > 0 ? widget.currentHeight.toString() : '1024',
+    );
     _inferFromCurrent();
   }
 
   void _inferFromCurrent() {
+    if (widget.currentWidth == 0 || widget.currentHeight == 0) {
+      _mode = _Mode.auto;
+      return;
+    }
     for (final tier in _SizeTier.values) {
       final map = _presets[tier]!;
       for (final entry in map.entries) {
         if (entry.value.$1 == widget.currentWidth &&
             entry.value.$2 == widget.currentHeight) {
+          _mode = _Mode.ratio;
           _tier = tier;
           _ratio = entry.key;
           return;
@@ -128,6 +137,7 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
   }
 
   (int, int) get _computedSize {
+    if (_mode == _Mode.auto) return (0, 0);
     if (_mode == _Mode.custom) {
       final w = int.tryParse(_wCtrl.text.trim()) ?? 1024;
       final h = int.tryParse(_hCtrl.text.trim()) ?? 1024;
@@ -156,6 +166,7 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
             const SizedBox(height: 16),
             _buildModeTabs(),
             const SizedBox(height: 16),
+            if (_mode == _Mode.auto) _buildAutoContent(),
             if (_mode == _Mode.ratio) _buildRatioContent(),
             if (_mode == _Mode.custom) _buildCustomContent(),
             const SizedBox(height: 16),
@@ -210,10 +221,13 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
       ),
       child: Row(
         children: [
+          _tabButton('自动', _mode == _Mode.auto, () {
+            setState(() => _mode = _Mode.auto);
+          }),
           _tabButton('按比例', _mode == _Mode.ratio, () {
             setState(() => _mode = _Mode.ratio);
           }),
-          _tabButton('自定义宽高', _mode == _Mode.custom, () {
+          _tabButton('自定义', _mode == _Mode.custom, () {
             setState(() => _mode = _Mode.custom);
           }),
         ],
@@ -243,6 +257,32 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAutoContent() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 40, color: AppThemeTokens.primary.withValues(alpha: 0.6)),
+          const SizedBox(height: 12),
+          Text(
+            '由模型自动决定尺寸',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '不传递尺寸参数，由模型根据内容自行选择',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppThemeTokens.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -405,7 +445,7 @@ class _SizePickerSheetState extends State<_SizePickerSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${size.$1} × ${size.$2}',
+            size.$1 == 0 ? '自动' : '${size.$1} × ${size.$2}',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),

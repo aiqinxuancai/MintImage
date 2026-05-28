@@ -63,10 +63,13 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
         foregroundColor: Colors.white,
         actions: [
           if (record.resultImagePath != null || record.resultImageUrl != null)
-            IconButton(
-              tooltip: '保存到本地',
-              onPressed: () => _saveImage(context, ref),
-              icon: const Icon(Icons.download_rounded),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                tooltip: '保存到本地',
+                onPressed: () => _saveImage(context, ref),
+                icon: const Icon(Icons.download_rounded),
+              ),
             ),
         ],
       ),
@@ -100,9 +103,14 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      record.prompt,
-                      style: const TextStyle(color: Colors.white, height: 1.45),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 84),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          record.prompt,
+                          style: const TextStyle(color: Colors.white, height: 1.45),
+                        ),
+                      ),
                     ),
                   ],
                 ),

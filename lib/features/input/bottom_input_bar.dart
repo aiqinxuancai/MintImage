@@ -13,7 +13,6 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/services/attachment_picker_service.dart';
 import '../../shared/theme.dart';
-import 'api_profile_selector.dart';
 import 'attachment_preview_strip.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
@@ -32,11 +31,11 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   final TextEditingController _promptController = TextEditingController();
   final FocusNode _promptFocusNode = FocusNode();
 
-  SizePreset _sizePreset = SizePreset.square1k;
+  SizePreset _sizePreset = SizePreset.auto;
   ImageQuality _quality = ImageQuality.auto;
   int _count = 1;
-  int _customWidth = 1024;
-  int _customHeight = 1024;
+  int _customWidth = 0;
+  int _customHeight = 0;
   bool _submitting = false;
   List<PickedAttachment> _attachments = const [];
 
@@ -101,9 +100,11 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   }
 
   SizePreset _matchingSizePreset(int width, int height) {
+    if (width == 0 || height == 0) return SizePreset.auto;
     return SizePreset.values.firstWhere(
       (preset) =>
           preset != SizePreset.custom &&
+          preset != SizePreset.auto &&
           preset.width == width &&
           preset.height == height,
       orElse: () => SizePreset.custom,
@@ -154,20 +155,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              color: AppThemeTokens.surfaceSoft,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: IconButton(
-                              tooltip: '添加图片',
-                              onPressed: _submitting ? null : _pickAttachments,
-                              icon: const Icon(Icons.attach_file_rounded),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
                           Expanded(
                             child: Focus(
                               onKeyEvent: _handleKeyEvent,
@@ -196,51 +183,64 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            SizeSelector(
-                              currentWidth: _customWidth,
-                              currentHeight: _customHeight,
-                              onSizeSelected: (width, height) {
-                                setState(() {
-                                  _sizePreset = SizePreset.custom;
-                                  _customWidth = width;
-                                  _customHeight = height;
-                                });
-                              },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  SizeSelector(
+                                    currentWidth: _customWidth,
+                                    currentHeight: _customHeight,
+                                    onSizeSelected: (width, height) {
+                                      setState(() {
+                                        _sizePreset = _matchingSizePreset(width, height);
+                                        _customWidth = width;
+                                        _customHeight = height;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  QualitySelector(
+                                    selectedQuality: _quality,
+                                    onSelected: (quality) {
+                                      setState(() {
+                                        _quality = quality;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  QuantitySelector(
+                                    count: _count,
+                                    onSelected: (count) {
+                                      setState(() {
+                                        _count = count;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            QualitySelector(
-                              selectedQuality: _quality,
-                              onSelected: (quality) {
-                                setState(() {
-                                  _quality = quality;
-                                });
-                              },
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: IconButton(
+                              tooltip: '添加图片',
+                              onPressed: _submitting ? null : _pickAttachments,
+                              icon: const Icon(Icons.attach_file_rounded, size: 20),
+                              padding: EdgeInsets.zero,
+                              style: IconButton.styleFrom(
+                                backgroundColor: AppThemeTokens.surfaceSoft,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            QuantitySelector(
-                              count: _count,
-                              onSelected: (count) {
-                                setState(() {
-                                  _count = count;
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            ApiProfileSelector(
-                              profiles: settings.profiles,
-                              activeProfileId: settings.activeProfileId,
-                              onSelected: (id) {
-                                ref
-                                    .read(settingsProvider.notifier)
-                                    .setActiveProfile(id);
-                              },
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       if (!hasApiKey) ...[
                         const SizedBox(height: 8),

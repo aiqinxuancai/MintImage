@@ -128,17 +128,46 @@ class _QuantityDialogState extends State<_QuantityDialog> {
 
   Widget _buildQuickPicks() {
     const picks = [1, 2, 4, 8, 16];
-    return Wrap(
-      spacing: 8,
+    return Row(
       children: picks.map((n) {
         final active = _value == n;
-        return ChoiceChip(
-          label: Text('$n'),
-          selected: active,
-          onSelected: (_) {
-            widget.controller.text = '$n';
-            setState(() => _value = n);
-          },
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: n != 16 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () {
+                widget.controller.text = '$n';
+                widget.controller.selection = TextSelection.collapsed(
+                  offset: '$n'.length,
+                );
+                setState(() => _value = n);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: active
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$n',
+                  style: TextStyle(
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ),
+          ),
         );
       }).toList(),
     );

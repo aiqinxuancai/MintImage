@@ -27,9 +27,11 @@ class ImageGenerationApi {
       'model': profile.model,
       'prompt': request.prompt,
       'n': 1,
-      'size': request.apiSize,
       'quality': request.quality.apiValue,
     };
+    if (request.apiSize != null) {
+      body['size'] = request.apiSize;
+    }
     if (responseFormat != null && responseFormat.trim().isNotEmpty) {
       body['response_format'] = responseFormat;
     }

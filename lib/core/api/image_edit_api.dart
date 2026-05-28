@@ -34,9 +34,11 @@ class ImageEditApi {
       MapEntry('model', profile.model),
       MapEntry('prompt', request.prompt),
       MapEntry('n', '1'),
-      MapEntry('size', request.apiSize),
       MapEntry('quality', request.quality.apiValue),
     ];
+    if (request.apiSize != null) {
+      fields.add(MapEntry('size', request.apiSize!));
+    }
     if (responseFormat != null && responseFormat.trim().isNotEmpty) {
       fields.add(MapEntry('response_format', responseFormat));
     }
