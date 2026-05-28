@@ -24,7 +24,7 @@ class ApiProfileSelector extends StatelessWidget {
 
     return SelectorButton<String>(
       icon: Icons.hub_rounded,
-      label: '源API ${activeProfile.name}',
+      label: activeProfile.name,
       values: profiles.map((profile) => profile.id).toList(),
       selectedValue: activeProfileId,
       onSelected: onSelected,

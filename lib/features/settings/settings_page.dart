@@ -22,10 +22,13 @@ class SettingsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('设置'),
         actions: [
-          IconButton(
-            tooltip: '新增配置',
-            onPressed: () => _openEditor(context),
-            icon: const Icon(Icons.add_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: '新增配置',
+              onPressed: () => _openEditor(context),
+              icon: const Icon(Icons.add_rounded),
+            ),
           ),
         ],
       ),

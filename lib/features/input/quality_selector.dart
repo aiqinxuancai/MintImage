@@ -17,7 +17,7 @@ class QualitySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return SelectorButton<ImageQuality>(
       icon: Icons.auto_awesome_rounded,
-      label: '质量 ${selectedQuality.label}',
+      label: selectedQuality.label,
       values: ImageQuality.values,
       selectedValue: selectedQuality,
       onSelected: onSelected,

@@ -201,26 +201,13 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                         child: Row(
                           children: [
                             SizeSelector(
-                              selectedPreset: _sizePreset,
-                              customWidth: _customWidth,
-                              customHeight: _customHeight,
-                              onPresetSelected: (preset) async {
-                                if (preset == SizePreset.custom) {
-                                  final customSize =
-                                      await _showCustomSizeDialog();
-                                  if (customSize == null) {
-                                    return;
-                                  }
-                                  setState(() {
-                                    _sizePreset = SizePreset.custom;
-                                    _customWidth = customSize.$1;
-                                    _customHeight = customSize.$2;
-                                  });
-                                  return;
-                                }
-
+                              currentWidth: _customWidth,
+                              currentHeight: _customHeight,
+                              onSizeSelected: (width, height) {
                                 setState(() {
-                                  _sizePreset = preset;
+                                  _sizePreset = SizePreset.custom;
+                                  _customWidth = width;
+                                  _customHeight = height;
                                 });
                               },
                             ),
@@ -396,64 +383,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
         });
       }
     }
-  }
-
-  Future<(int, int)?> _showCustomSizeDialog() async {
-    final widthController = TextEditingController(
-      text: _customWidth.toString(),
-    );
-    final heightController = TextEditingController(
-      text: _customHeight.toString(),
-    );
-
-    final result = await showDialog<(int, int)>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('自定义尺寸'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: widthController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '宽度'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: heightController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '高度'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final width = int.tryParse(widthController.text.trim());
-                final height = int.tryParse(heightController.text.trim());
-                if (width == null ||
-                    height == null ||
-                    width <= 0 ||
-                    height <= 0) {
-                  return;
-                }
-                Navigator.of(context).pop((width, height));
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        );
-      },
-    );
-
-    widthController.dispose();
-    heightController.dispose();
-    return result;
   }
 
   void _showMessage(String message) {

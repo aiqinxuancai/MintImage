@@ -45,11 +45,11 @@ class SelectorButton<T> extends StatelessWidget {
         }).toList();
       },
       child: Container(
-        constraints: const BoxConstraints(minHeight: 34),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        constraints: const BoxConstraints(minHeight: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
         decoration: BoxDecoration(
           color: AppThemeTokens.surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: AppThemeTokens.border.withValues(alpha: 0.7),
           ),
@@ -57,22 +57,22 @@ class SelectorButton<T> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppThemeTokens.primaryStrong),
-            const SizedBox(width: 6),
+            Icon(icon, size: 13, color: AppThemeTokens.primaryStrong),
+            const SizedBox(width: 4),
             Flexible(
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppThemeTokens.primaryStrong,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 3),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              size: 18,
+              size: 16,
               color: AppThemeTokens.primaryStrong,
             ),
           ],

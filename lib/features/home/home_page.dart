@@ -46,10 +46,13 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: '设置',
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: '设置',
+              onPressed: _openSettings,
+              icon: const Icon(Icons.settings_rounded),
+            ),
           ),
         ],
       ),

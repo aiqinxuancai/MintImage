@@ -16,7 +16,7 @@ class QuantitySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return SelectorButton<int>(
       icon: Icons.layers_rounded,
-      label: '数量 $count',
+      label: '$count',
       values: List<int>.generate(16, (index) => index + 1),
       selectedValue: count,
       onSelected: onSelected,
