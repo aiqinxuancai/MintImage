@@ -96,36 +96,37 @@ jobs:
           name: macos-arm64
           path: MintImage-macos-arm64.zip
 
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Prepare build version
-        run: |
-          echo "APP_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-          echo "BUILD_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
-
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --dart-define "APP_VERSION=$APP_VERSION"
-
-      - name: Archive iOS build
-        run: |
-          cd build/ios/iphoneos
-          zip -r ../../../MintImage-ios-nosign.zip Runner.app
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: MintImage-ios-nosign.zip
+  # iOS packaging is temporarily disabled.
+  # build-ios:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - uses: subosito/flutter-action@v2
+  #       with:
+  #         channel: stable
+  #
+  #     - name: Prepare build version
+  #       run: |
+  #         echo "APP_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+  #         echo "BUILD_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+  #         echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+  #
+  #     - run: flutter pub get
+  #     - run: flutter build ios --release --no-codesign --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --dart-define "APP_VERSION=$APP_VERSION"
+  #
+  #     - name: Archive iOS build
+  #       run: |
+  #         cd build/ios/iphoneos
+  #         zip -r ../../../MintImage-ios-nosign.zip Runner.app
+  #
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ios-ipa
+  #         path: MintImage-ios-nosign.zip
 
   release:
-    needs: [build-windows, build-android, build-macos, build-ios]
+    needs: [build-windows, build-android, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -140,4 +141,3 @@ jobs:
             MintImage-windows-x64.zip
             app-release.apk
             MintImage-macos-arm64.zip
-            MintImage-ios-nosign.zip
