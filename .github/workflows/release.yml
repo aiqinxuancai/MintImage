@@ -24,12 +24,12 @@ jobs:
       - name: Archive Windows build
         run: |
           cd build/windows/x64/runner/Release
-          7z a -tzip ../../../../../windows-x64.zip .
+          7z a -tzip ../../../../../MintImage-windows-x64.zip .
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: windows-x64.zip
+          path: MintImage-windows-x64.zip
 
   build-android:
     runs-on: ubuntu-latest
@@ -68,12 +68,12 @@ jobs:
       - name: Archive macOS build
         run: |
           cd build/macos/Build/Products/Release
-          zip -r ../../../../../macos-arm64.zip *.app
+          zip -r ../../../../../MintImage-macos-arm64.zip *.app
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64
-          path: macos-arm64.zip
+          path: MintImage-macos-arm64.zip
 
   build-ios:
     runs-on: macos-latest
@@ -90,12 +90,12 @@ jobs:
       - name: Archive iOS build
         run: |
           cd build/ios/iphoneos
-          zip -r ../../../ios-nosign.zip Runner.app
+          zip -r ../../../MintImage-ios-nosign.zip Runner.app
 
       - uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: ios-nosign.zip
+          path: MintImage-ios-nosign.zip
 
   release:
     needs: [build-windows, build-android, build-macos, build-ios]
@@ -110,7 +110,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            windows-x64.zip
+            MintImage-windows-x64.zip
             app-release.apk
-            macos-arm64.zip
-            ios-nosign.zip
+            MintImage-macos-arm64.zip
+            MintImage-ios-nosign.zip
