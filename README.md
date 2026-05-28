@@ -18,7 +18,12 @@ Windows · macOS · Android · iOS
 
 ## 截图
 
-<!-- 在此放置截图 -->
+
+<img width="1035" height="713" alt="image" src="https://github.com/user-attachments/assets/28d1b2d8-effb-4c02-98f1-7eb697f4e4d6" />
+
+<img width="1266" height="713" alt="image" src="https://github.com/user-attachments/assets/419d3b28-b692-4271-884c-608838b2c853" />
+
+
 
 ## 使用方法
 
