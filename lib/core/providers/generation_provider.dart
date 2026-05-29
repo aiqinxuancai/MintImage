@@ -190,7 +190,11 @@ class GenerationController extends StateNotifier<GenerationState> {
         return;
       }
 
-      final storedImage = await storage.storeResult(record.id, result);
+      final storedImage = await storage.storeResult(
+        record.id,
+        result,
+        fileExtension: request.outputFormat.fileExtension,
+      );
       stopwatch.stop();
 
       if (_isRecordCancelled(record.id) || _isRecordDeleted(record.id)) {

@@ -37,6 +37,8 @@ void main() {
         expect(payload, contains('turn this into a watercolor poster'));
         expect(payload, contains('name="quality"'));
         expect(payload, contains('medium'));
+        expect(payload, contains('name="output_format"'));
+        expect(payload, contains('webp'));
         expect(payload, contains('name="size"'));
         expect(payload, contains('1536x1024'));
 
@@ -63,6 +65,7 @@ void main() {
         customWidth: 1536,
         customHeight: 1024,
         quality: ImageQuality.medium,
+        outputFormat: ImageOutputFormat.webp,
         count: 1,
         apiProfileId: 'default',
       );
@@ -90,6 +93,8 @@ void main() {
         final payload = utf8.decode(bytes, allowMalformed: true);
 
         expect(payload, isNot(contains('name="response_format"')));
+        expect(payload, contains('name="output_format"'));
+        expect(payload, contains('png'));
 
         request.response.headers.contentType = ContentType.json;
         request.response.write(

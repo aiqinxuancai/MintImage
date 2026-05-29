@@ -46,6 +46,26 @@ enum ImageQuality {
   }
 }
 
+enum ImageOutputFormat {
+  png('png', 'PNG'),
+  jpeg('jpeg', 'JPEG'),
+  webp('webp', 'WEBP');
+
+  const ImageOutputFormat(this.apiValue, this.label);
+
+  final String apiValue;
+  final String label;
+
+  String get fileExtension => apiValue;
+
+  static ImageOutputFormat fromApiValue(String value) {
+    return ImageOutputFormat.values.firstWhere(
+      (format) => format.apiValue == value,
+      orElse: () => ImageOutputFormat.png,
+    );
+  }
+}
+
 class GenerationRequest {
   const GenerationRequest({
     required this.prompt,
@@ -54,6 +74,7 @@ class GenerationRequest {
     required this.customWidth,
     required this.customHeight,
     required this.quality,
+    this.outputFormat = ImageOutputFormat.png,
     required this.count,
     required this.apiProfileId,
   });
@@ -64,6 +85,7 @@ class GenerationRequest {
   final int customWidth;
   final int customHeight;
   final ImageQuality quality;
+  final ImageOutputFormat outputFormat;
   final int count;
   final String apiProfileId;
 
@@ -86,6 +108,7 @@ class GenerationRequest {
     int? customWidth,
     int? customHeight,
     ImageQuality? quality,
+    ImageOutputFormat? outputFormat,
     int? count,
     String? apiProfileId,
   }) {
@@ -96,6 +119,7 @@ class GenerationRequest {
       customWidth: customWidth ?? this.customWidth,
       customHeight: customHeight ?? this.customHeight,
       quality: quality ?? this.quality,
+      outputFormat: outputFormat ?? this.outputFormat,
       count: count ?? this.count,
       apiProfileId: apiProfileId ?? this.apiProfileId,
     );
@@ -109,6 +133,7 @@ class GenerationRequest {
       'customWidth': customWidth,
       'customHeight': customHeight,
       'quality': quality.apiValue,
+      'outputFormat': outputFormat.apiValue,
       'count': count,
       'apiProfileId': apiProfileId,
     };
@@ -127,6 +152,9 @@ class GenerationRequest {
       customHeight: json['customHeight'] as int? ?? 1024,
       quality: ImageQuality.fromApiValue(
         json['quality'] as String? ?? ImageQuality.auto.apiValue,
+      ),
+      outputFormat: ImageOutputFormat.fromApiValue(
+        json['outputFormat'] as String? ?? ImageOutputFormat.png.apiValue,
       ),
       count: json['count'] as int? ?? 1,
       apiProfileId: json['apiProfileId'] as String? ?? '',

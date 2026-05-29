@@ -28,6 +28,7 @@ class ImageGenerationApi {
       'prompt': request.prompt,
       'n': 1,
       'quality': request.quality.apiValue,
+      'output_format': request.outputFormat.apiValue,
     };
     if (request.apiSize != null) {
       body['size'] = request.apiSize;

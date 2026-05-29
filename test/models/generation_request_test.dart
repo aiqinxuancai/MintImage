@@ -11,6 +11,7 @@ void main() {
         customWidth: 2048,
         customHeight: 1152,
         quality: ImageQuality.high,
+        outputFormat: ImageOutputFormat.webp,
         count: 3,
         apiProfileId: 'profile-1',
       );
@@ -23,6 +24,7 @@ void main() {
       expect(restored.customWidth, 2048);
       expect(restored.customHeight, 1152);
       expect(restored.quality, ImageQuality.high);
+      expect(restored.outputFormat, ImageOutputFormat.webp);
       expect(restored.count, 3);
       expect(restored.apiProfileId, 'profile-1');
       expect(restored.apiSize, '2048x1152');
@@ -78,6 +80,33 @@ void main() {
 
       expect(unknownQuality.quality, ImageQuality.auto);
       expect(missingQuality.quality, ImageQuality.auto);
+    });
+
+    test('falls back to png output format for unknown or missing values', () {
+      final unknownFormat = GenerationRequest.fromJson({
+        'prompt': 'test',
+        'imagePaths': const <String>[],
+        'sizePreset': SizePreset.square1k.storageKey,
+        'customWidth': 1024,
+        'customHeight': 1024,
+        'quality': ImageQuality.auto.apiValue,
+        'outputFormat': 'gif',
+        'count': 1,
+        'apiProfileId': 'default',
+      });
+      final missingFormat = GenerationRequest.fromJson({
+        'prompt': 'test',
+        'imagePaths': const <String>[],
+        'sizePreset': SizePreset.square1k.storageKey,
+        'customWidth': 1024,
+        'customHeight': 1024,
+        'quality': ImageQuality.auto.apiValue,
+        'count': 1,
+        'apiProfileId': 'default',
+      });
+
+      expect(unknownFormat.outputFormat, ImageOutputFormat.png);
+      expect(missingFormat.outputFormat, ImageOutputFormat.png);
     });
   });
 }

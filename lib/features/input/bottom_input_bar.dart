@@ -14,6 +14,7 @@ import '../../core/providers/settings_provider.dart';
 import '../../core/services/attachment_picker_service.dart';
 import '../../shared/theme.dart';
 import 'attachment_preview_strip.dart';
+import 'image_format_selector.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
 import 'size_selector.dart';
@@ -38,6 +39,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
   SizePreset _sizePreset = SizePreset.auto;
   ImageQuality _quality = ImageQuality.auto;
+  ImageOutputFormat _outputFormat = ImageOutputFormat.png;
   int _count = 1;
   int _customWidth = 0;
   int _customHeight = 0;
@@ -268,6 +270,15 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                     },
                                   ),
                                   const SizedBox(width: 8),
+                                  ImageFormatSelector(
+                                    selectedFormat: _outputFormat,
+                                    onSelected: (format) {
+                                      setState(() {
+                                        _outputFormat = format;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
                                   QuantitySelector(
                                     count: _count,
                                     onSelected: (count) {
@@ -421,6 +432,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
           customWidth: _customWidth,
           customHeight: _customHeight,
           quality: _quality,
+          outputFormat: _outputFormat,
           count: _count,
           apiProfileId: settings.activeProfileId,
         ),

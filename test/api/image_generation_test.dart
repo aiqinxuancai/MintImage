@@ -30,6 +30,7 @@ void main() {
           expect(body['n'], 1);
           expect(body['size'], '1024x1024');
           expect(body['quality'], 'low');
+          expect(body['output_format'], 'png');
           expect(body.containsKey('response_format'), isFalse);
 
           request.response.headers.contentType = ContentType.json;
@@ -108,48 +109,53 @@ void main() {
       );
     });
 
-    test('includes response_format when explicitly configured', () async {
-      final server = await _startServer((request) async {
-        final body =
-            jsonDecode(await utf8.decoder.bind(request).join())
-                as Map<String, dynamic>;
+    test(
+      'includes response_format and output_format when configured',
+      () async {
+        final server = await _startServer((request) async {
+          final body =
+              jsonDecode(await utf8.decoder.bind(request).join())
+                  as Map<String, dynamic>;
 
-        expect(body['response_format'], 'url');
+          expect(body['response_format'], 'url');
+          expect(body['output_format'], 'jpeg');
 
-        request.response.headers.contentType = ContentType.json;
-        request.response.write(
-          jsonEncode({
-            'created': 1715000000,
-            'data': [
-              {'url': 'https://example.com/image.png'},
-            ],
-          }),
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'created': 1715000000,
+              'data': [
+                {'url': 'https://example.com/image.png'},
+              ],
+            }),
+          );
+          await request.response.close();
+        });
+        addTearDown(server.close);
+
+        final api = const ImageGenerationApi();
+        final request = GenerationRequest(
+          prompt: 'a red apple on white background',
+          imagePaths: const [],
+          sizePreset: SizePreset.square1k,
+          customWidth: 1024,
+          customHeight: 1024,
+          quality: ImageQuality.low,
+          outputFormat: ImageOutputFormat.jpeg,
+          count: 1,
+          apiProfileId: 'default',
         );
-        await request.response.close();
-      });
-      addTearDown(server.close);
 
-      final api = const ImageGenerationApi();
-      final request = GenerationRequest(
-        prompt: 'a red apple on white background',
-        imagePaths: const [],
-        sizePreset: SizePreset.square1k,
-        customWidth: 1024,
-        customHeight: 1024,
-        quality: ImageQuality.low,
-        count: 1,
-        apiProfileId: 'default',
-      );
+        final results = await api.generate(
+          request,
+          _profileFor(server),
+          responseFormat: 'url',
+          timeoutSeconds: 600,
+        );
 
-      final results = await api.generate(
-        request,
-        _profileFor(server),
-        responseFormat: 'url',
-        timeoutSeconds: 600,
-      );
-
-      expect(results.single.imageUrl, 'https://example.com/image.png');
-    });
+        expect(results.single.imageUrl, 'https://example.com/image.png');
+      },
+    );
   });
 }
 

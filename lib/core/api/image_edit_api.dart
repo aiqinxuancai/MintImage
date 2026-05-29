@@ -35,6 +35,7 @@ class ImageEditApi {
       MapEntry('prompt', request.prompt),
       MapEntry('n', '1'),
       MapEntry('quality', request.quality.apiValue),
+      MapEntry('output_format', request.outputFormat.apiValue),
     ];
     if (request.apiSize != null) {
       fields.add(MapEntry('size', request.apiSize!));

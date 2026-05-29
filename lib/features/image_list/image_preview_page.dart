@@ -28,6 +28,7 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
 
   late final PhotoViewController _photoViewController;
   late final PhotoViewScaleStateController _scaleStateController;
+  late Future<String?> _actualSizeLabelFuture;
   StreamSubscription<PhotoViewControllerValue>? _controllerSubscription;
 
   double? _baselineScale;
@@ -40,9 +41,18 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
     super.initState();
     _photoViewController = PhotoViewController();
     _scaleStateController = PhotoViewScaleStateController();
+    _actualSizeLabelFuture = _resolveActualSizeLabel();
     _controllerSubscription = _photoViewController.outputStateStream.listen(
       _handleControllerValue,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant ImagePreviewPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.record != widget.record) {
+      _actualSizeLabelFuture = _resolveActualSizeLabel();
+    }
   }
 
   @override
@@ -98,6 +108,9 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
                       runSpacing: 8,
                       children: [
                         _PreviewChip(label: record.sizeLabel),
+                        _ActualSizePreviewChip(
+                          labelFuture: _actualSizeLabelFuture,
+                        ),
                         _PreviewChip(label: record.qualityLabel),
                         _PreviewChip(label: record.model),
                       ],
@@ -108,7 +121,10 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
                       child: SingleChildScrollView(
                         child: Text(
                           record.prompt,
-                          style: const TextStyle(color: Colors.white, height: 1.45),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            height: 1.45,
+                          ),
                         ),
                       ),
                     ),
@@ -222,6 +238,66 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
     );
   }
 
+  Future<String?> _resolveActualSizeLabel() async {
+    final provider = _previewImageProvider();
+    if (provider == null) {
+      return null;
+    }
+
+    try {
+      final info = await _resolveImageInfo(provider);
+      final width = info.image.width;
+      final height = info.image.height;
+      info.dispose();
+      return '实际尺寸${width}x$height';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ImageProvider? _previewImageProvider() {
+    final record = widget.record;
+
+    final resultImagePath = record.resultImagePath;
+    if (resultImagePath != null && File(resultImagePath).existsSync()) {
+      return FileImage(File(resultImagePath));
+    }
+
+    final sourceImagePath = record.sourceImagePath;
+    if (sourceImagePath != null && File(sourceImagePath).existsSync()) {
+      return FileImage(File(sourceImagePath));
+    }
+
+    final resultImageUrl = record.resultImageUrl;
+    if (resultImageUrl != null && resultImageUrl.isNotEmpty) {
+      return CachedNetworkImageProvider(resultImageUrl);
+    }
+
+    return null;
+  }
+
+  Future<ImageInfo> _resolveImageInfo(ImageProvider provider) {
+    final completer = Completer<ImageInfo>();
+    final stream = provider.resolve(const ImageConfiguration());
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (image, synchronousCall) {
+        if (!completer.isCompleted) {
+          completer.complete(image);
+        }
+        stream.removeListener(listener);
+      },
+      onError: (error, stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    return completer.future;
+  }
+
   Future<void> _saveImage(BuildContext context, WidgetRef ref) async {
     try {
       final extension = _resolvedExtension();
@@ -301,6 +377,22 @@ class _PreviewChip extends StatelessWidget {
           context,
         ).textTheme.labelSmall?.copyWith(color: Colors.white),
       ),
+    );
+  }
+}
+
+class _ActualSizePreviewChip extends StatelessWidget {
+  const _ActualSizePreviewChip({required this.labelFuture});
+
+  final Future<String?> labelFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: labelFuture,
+      builder: (context, snapshot) {
+        return _PreviewChip(label: snapshot.data ?? '实际尺寸--');
+      },
     );
   }
 }

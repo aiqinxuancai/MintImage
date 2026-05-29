@@ -19,13 +19,16 @@ class ImageStorageService {
 
   Future<StoredImageResult> storeResult(
     String recordId,
-    GenerationResult result,
-  ) async {
+    GenerationResult result, {
+    String fileExtension = 'png',
+  }) async {
     final outputDirectory = await _ensureOutputDirectory();
 
     if (result.b64Json != null && result.b64Json!.isNotEmpty) {
       final bytes = base64Decode(result.b64Json!);
-      final file = File(p.join(outputDirectory.path, '$recordId.png'));
+      final file = File(
+        p.join(outputDirectory.path, '$recordId.$fileExtension'),
+      );
       await file.writeAsBytes(bytes, flush: true);
 
       return StoredImageResult(localPath: file.path, imageUrl: result.imageUrl);
