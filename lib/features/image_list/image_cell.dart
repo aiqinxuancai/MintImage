@@ -155,24 +155,36 @@ class ImageCell extends ConsumerWidget {
                       const Spacer(),
                       Row(
                         children: [
-                          Flexible(
-                            child: Text(
-                              _formatTime(record.createdAt),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: AppThemeTokens.textSecondary,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0,
-                              ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    _formatTime(record.createdAt),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: AppThemeTokens.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0,
+                                    ),
+                                  ),
+                                ),
+                                if (record.isFavorite) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.star_rounded,
+                                    size: 14,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (record.isFavorite) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.star_rounded,
-                              size: 14,
-                              color: Colors.orange.shade700,
+                          if (_showsInlineMenuButton) ...[
+                            const SizedBox(width: 8),
+                            _InlineMenuButton(
+                              onPressed: () => _showActions(context),
                             ),
                           ],
                         ],
@@ -187,6 +199,8 @@ class ImageCell extends ConsumerWidget {
       ),
     );
   }
+
+  bool get _showsInlineMenuButton => Platform.isMacOS || Platform.isWindows;
 
   bool get _canPreview {
     return record.resultImagePath != null ||
@@ -394,6 +408,33 @@ class ImageCell extends ConsumerWidget {
       return trimmed;
     }
     return '${trimmed.substring(0, 7)}…';
+  }
+}
+
+class _InlineMenuButton extends StatelessWidget {
+  const _InlineMenuButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 24,
+      height: 22,
+      child: IconButton(
+        tooltip: '更多操作',
+        onPressed: onPressed,
+        icon: const Icon(Icons.more_horiz_rounded, size: 17),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: 24, height: 22),
+        visualDensity: VisualDensity.compact,
+        splashRadius: 14,
+        color: AppThemeTokens.textSecondary,
+        style: IconButton.styleFrom(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
   }
 }
 
