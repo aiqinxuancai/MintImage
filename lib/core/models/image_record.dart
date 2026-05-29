@@ -40,6 +40,7 @@ class ImageRecord {
     required this.createdAt,
     required this.durationMs,
     required this.usedSingleImageFallback,
+    required this.isFavorite,
   });
 
   factory ImageRecord.pending({
@@ -69,6 +70,7 @@ class ImageRecord {
       createdAt: createdAt,
       durationMs: null,
       usedSingleImageFallback: false,
+      isFavorite: false,
     );
   }
 
@@ -90,6 +92,7 @@ class ImageRecord {
   final DateTime createdAt;
   final int? durationMs;
   final bool usedSingleImageFallback;
+  final bool isFavorite;
 
   bool get isInProgress =>
       status == ImageRecordStatus.pending ||
@@ -152,6 +155,7 @@ class ImageRecord {
     bool clearResultB64 = false,
     bool clearRawApiResponseValue = false,
     bool? usedSingleImageFallback,
+    bool? isFavorite,
   }) {
     return ImageRecord(
       id: id ?? this.id,
@@ -181,6 +185,7 @@ class ImageRecord {
       durationMs: durationMs ?? this.durationMs,
       usedSingleImageFallback:
           usedSingleImageFallback ?? this.usedSingleImageFallback,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 }

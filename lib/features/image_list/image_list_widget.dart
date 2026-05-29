@@ -14,12 +14,15 @@ class ImageListWidget extends ConsumerStatefulWidget {
     required this.onRetryRecord,
     required this.onCancelRecord,
     required this.onDeleteRecord,
+    required this.onToggleFavorite,
     required this.currentAttachmentCount,
     required this.onAppendRecordToAttachments,
     required this.selectionMode,
     required this.selectedRecordIds,
     required this.onToggleSelection,
     required this.onSelectRecord,
+    required this.favoriteOnly,
+    required this.searchQuery,
   });
 
   final ValueChanged<ImageRecord> onReusePrompt;
@@ -27,12 +30,15 @@ class ImageListWidget extends ConsumerStatefulWidget {
   final ValueChanged<ImageRecord> onRetryRecord;
   final ValueChanged<String> onCancelRecord;
   final ValueChanged<ImageRecord> onDeleteRecord;
+  final ValueChanged<ImageRecord> onToggleFavorite;
   final int currentAttachmentCount;
   final ValueChanged<ImageRecord> onAppendRecordToAttachments;
   final bool selectionMode;
   final Set<String> selectedRecordIds;
   final ValueChanged<String> onToggleSelection;
   final ValueChanged<String> onSelectRecord;
+  final bool favoriteOnly;
+  final String searchQuery;
 
   @override
   ConsumerState<ImageListWidget> createState() => _ImageListWidgetState();
@@ -58,9 +64,10 @@ class _ImageListWidgetState extends ConsumerState<ImageListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final records = ref.watch(imageListProvider);
+    final allRecords = ref.watch(imageListProvider);
+    final records = _filteredRecords(allRecords);
 
-    if (records.isEmpty) {
+    if (allRecords.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => ref.read(imageListProvider.notifier).reload(),
         child: ListView(
@@ -71,6 +78,25 @@ class _ImageListWidgetState extends ConsumerState<ImageListWidget> {
             EmptyState(
               title: '还没有生成记录',
               description: '输入提示词并点击发送后，新的生成任务会立即出现在这里。',
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (records.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => ref.read(imageListProvider.notifier).reload(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(12, 24, 12, 24),
+          children: [
+            const SizedBox(height: 48),
+            EmptyState(
+              title: widget.favoriteOnly ? '没有收藏记录' : '没有匹配结果',
+              description: widget.favoriteOnly
+                  ? '长按图像卡片并收藏后，可以在这里快速筛选。'
+                  : '换一个提示词关键词再试试。',
             ),
           ],
         ),
@@ -111,6 +137,7 @@ class _ImageListWidgetState extends ConsumerState<ImageListWidget> {
                 onRetry: () => widget.onRetryRecord(record),
                 onCancel: () => widget.onCancelRecord(record.id),
                 onDelete: () => widget.onDeleteRecord(record),
+                onToggleFavorite: () => widget.onToggleFavorite(record),
                 currentAttachmentCount: widget.currentAttachmentCount,
                 onAppendCurrentImageToAttachments: () =>
                     widget.onAppendRecordToAttachments(record),
@@ -138,6 +165,22 @@ class _ImageListWidgetState extends ConsumerState<ImageListWidget> {
         },
       ),
     );
+  }
+
+  List<ImageRecord> _filteredRecords(List<ImageRecord> records) {
+    final query = widget.searchQuery.trim().toLowerCase();
+    return records
+        .where((record) {
+          if (widget.favoriteOnly && !record.isFavorite) {
+            return false;
+          }
+          if (query.isNotEmpty &&
+              !record.prompt.toLowerCase().contains(query)) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   void _selectAtPosition(

@@ -49,6 +49,16 @@ class ImageListController extends StateNotifier<List<ImageRecord>> {
     await _imageRecordDao.deleteById(id);
   }
 
+  Future<void> toggleFavorite(String id) async {
+    final existingIndex = state.indexWhere((item) => item.id == id);
+    if (existingIndex == -1) {
+      return;
+    }
+
+    final record = state[existingIndex];
+    await upsert(record.copyWith(isFavorite: !record.isFavorite));
+  }
+
   Future<void> clearHistory() async {
     state = const [];
     await _imageRecordDao.clearAll();

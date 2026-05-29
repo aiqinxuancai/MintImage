@@ -67,6 +67,7 @@ class ImageRecordDao {
       createdAt: row.createdAt,
       durationMs: row.durationMs,
       usedSingleImageFallback: row.usedSingleImageFallback,
+      isFavorite: row.isFavorite,
     );
   }
 
@@ -90,6 +91,7 @@ class ImageRecordDao {
       createdAt: Value(record.createdAt),
       durationMs: Value(record.durationMs),
       usedSingleImageFallback: Value(record.usedSingleImageFallback),
+      isFavorite: Value(record.isFavorite),
     );
   }
 

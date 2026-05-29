@@ -200,6 +200,21 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -220,6 +235,7 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     createdAt,
     durationMs,
     usedSingleImageFallback,
+    isFavorite,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -378,6 +394,12 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         ),
       );
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
     return context;
   }
 
@@ -459,6 +481,10 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         DriftSqlType.bool,
         data['${effectivePrefix}used_single_image_fallback'],
       )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
     );
   }
 
@@ -488,6 +514,7 @@ class ImageRecordsTableData extends DataClass
   final DateTime createdAt;
   final int? durationMs;
   final bool usedSingleImageFallback;
+  final bool isFavorite;
   const ImageRecordsTableData({
     required this.id,
     required this.prompt,
@@ -507,6 +534,7 @@ class ImageRecordsTableData extends DataClass
     required this.createdAt,
     this.durationMs,
     required this.usedSingleImageFallback,
+    required this.isFavorite,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -545,6 +573,7 @@ class ImageRecordsTableData extends DataClass
       map['duration_ms'] = Variable<int>(durationMs);
     }
     map['used_single_image_fallback'] = Variable<bool>(usedSingleImageFallback);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
 
@@ -584,6 +613,7 @@ class ImageRecordsTableData extends DataClass
           ? const Value.absent()
           : Value(durationMs),
       usedSingleImageFallback: Value(usedSingleImageFallback),
+      isFavorite: Value(isFavorite),
     );
   }
 
@@ -615,6 +645,7 @@ class ImageRecordsTableData extends DataClass
       usedSingleImageFallback: serializer.fromJson<bool>(
         json['usedSingleImageFallback'],
       ),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
   @override
@@ -641,6 +672,7 @@ class ImageRecordsTableData extends DataClass
       'usedSingleImageFallback': serializer.toJson<bool>(
         usedSingleImageFallback,
       ),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
@@ -663,6 +695,7 @@ class ImageRecordsTableData extends DataClass
     DateTime? createdAt,
     Value<int?> durationMs = const Value.absent(),
     bool? usedSingleImageFallback,
+    bool? isFavorite,
   }) => ImageRecordsTableData(
     id: id ?? this.id,
     prompt: prompt ?? this.prompt,
@@ -693,6 +726,7 @@ class ImageRecordsTableData extends DataClass
     durationMs: durationMs.present ? durationMs.value : this.durationMs,
     usedSingleImageFallback:
         usedSingleImageFallback ?? this.usedSingleImageFallback,
+    isFavorite: isFavorite ?? this.isFavorite,
   );
   ImageRecordsTableData copyWithCompanion(ImageRecordsTableCompanion data) {
     return ImageRecordsTableData(
@@ -732,6 +766,9 @@ class ImageRecordsTableData extends DataClass
       usedSingleImageFallback: data.usedSingleImageFallback.present
           ? data.usedSingleImageFallback.value
           : this.usedSingleImageFallback,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
     );
   }
 
@@ -755,7 +792,8 @@ class ImageRecordsTableData extends DataClass
           ..write('rawApiResponseValue: $rawApiResponseValue, ')
           ..write('createdAt: $createdAt, ')
           ..write('durationMs: $durationMs, ')
-          ..write('usedSingleImageFallback: $usedSingleImageFallback')
+          ..write('usedSingleImageFallback: $usedSingleImageFallback, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
@@ -780,6 +818,7 @@ class ImageRecordsTableData extends DataClass
     createdAt,
     durationMs,
     usedSingleImageFallback,
+    isFavorite,
   );
   @override
   bool operator ==(Object other) =>
@@ -802,7 +841,8 @@ class ImageRecordsTableData extends DataClass
           other.rawApiResponseValue == this.rawApiResponseValue &&
           other.createdAt == this.createdAt &&
           other.durationMs == this.durationMs &&
-          other.usedSingleImageFallback == this.usedSingleImageFallback);
+          other.usedSingleImageFallback == this.usedSingleImageFallback &&
+          other.isFavorite == this.isFavorite);
 }
 
 class ImageRecordsTableCompanion
@@ -825,6 +865,7 @@ class ImageRecordsTableCompanion
   final Value<DateTime> createdAt;
   final Value<int?> durationMs;
   final Value<bool> usedSingleImageFallback;
+  final Value<bool> isFavorite;
   final Value<int> rowid;
   const ImageRecordsTableCompanion({
     this.id = const Value.absent(),
@@ -845,6 +886,7 @@ class ImageRecordsTableCompanion
     this.createdAt = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.usedSingleImageFallback = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ImageRecordsTableCompanion.insert({
@@ -866,6 +908,7 @@ class ImageRecordsTableCompanion
     required DateTime createdAt,
     this.durationMs = const Value.absent(),
     this.usedSingleImageFallback = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        prompt = Value(prompt),
@@ -894,6 +937,7 @@ class ImageRecordsTableCompanion
     Expression<DateTime>? createdAt,
     Expression<int>? durationMs,
     Expression<bool>? usedSingleImageFallback,
+    Expression<bool>? isFavorite,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -917,6 +961,7 @@ class ImageRecordsTableCompanion
       if (durationMs != null) 'duration_ms': durationMs,
       if (usedSingleImageFallback != null)
         'used_single_image_fallback': usedSingleImageFallback,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -940,6 +985,7 @@ class ImageRecordsTableCompanion
     Value<DateTime>? createdAt,
     Value<int?>? durationMs,
     Value<bool>? usedSingleImageFallback,
+    Value<bool>? isFavorite,
     Value<int>? rowid,
   }) {
     return ImageRecordsTableCompanion(
@@ -962,6 +1008,7 @@ class ImageRecordsTableCompanion
       durationMs: durationMs ?? this.durationMs,
       usedSingleImageFallback:
           usedSingleImageFallback ?? this.usedSingleImageFallback,
+      isFavorite: isFavorite ?? this.isFavorite,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1027,6 +1074,9 @@ class ImageRecordsTableCompanion
         usedSingleImageFallback.value,
       );
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1054,6 +1104,7 @@ class ImageRecordsTableCompanion
           ..write('createdAt: $createdAt, ')
           ..write('durationMs: $durationMs, ')
           ..write('usedSingleImageFallback: $usedSingleImageFallback, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1092,6 +1143,7 @@ typedef $$ImageRecordsTableTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<int?> durationMs,
       Value<bool> usedSingleImageFallback,
+      Value<bool> isFavorite,
       Value<int> rowid,
     });
 typedef $$ImageRecordsTableTableUpdateCompanionBuilder =
@@ -1114,6 +1166,7 @@ typedef $$ImageRecordsTableTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<int?> durationMs,
       Value<bool> usedSingleImageFallback,
+      Value<bool> isFavorite,
       Value<int> rowid,
     });
 
@@ -1213,6 +1266,11 @@ class $$ImageRecordsTableTableFilterComposer
 
   ColumnFilters<bool> get usedSingleImageFallback => $composableBuilder(
     column: $table.usedSingleImageFallback,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1315,6 +1373,11 @@ class $$ImageRecordsTableTableOrderingComposer
     column: $table.usedSingleImageFallback,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ImageRecordsTableTableAnnotationComposer
@@ -1397,6 +1460,11 @@ class $$ImageRecordsTableTableAnnotationComposer
     column: $table.usedSingleImageFallback,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
 }
 
 class $$ImageRecordsTableTableTableManager
@@ -1457,6 +1525,7 @@ class $$ImageRecordsTableTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int?> durationMs = const Value.absent(),
                 Value<bool> usedSingleImageFallback = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ImageRecordsTableCompanion(
                 id: id,
@@ -1477,6 +1546,7 @@ class $$ImageRecordsTableTableTableManager
                 createdAt: createdAt,
                 durationMs: durationMs,
                 usedSingleImageFallback: usedSingleImageFallback,
+                isFavorite: isFavorite,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1499,6 +1569,7 @@ class $$ImageRecordsTableTableTableManager
                 required DateTime createdAt,
                 Value<int?> durationMs = const Value.absent(),
                 Value<bool> usedSingleImageFallback = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ImageRecordsTableCompanion.insert(
                 id: id,
@@ -1519,6 +1590,7 @@ class $$ImageRecordsTableTableTableManager
                 createdAt: createdAt,
                 durationMs: durationMs,
                 usedSingleImageFallback: usedSingleImageFallback,
+                isFavorite: isFavorite,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

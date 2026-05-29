@@ -27,9 +27,21 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   final GlobalKey<BottomInputBarState> _inputBarKey =
       GlobalKey<BottomInputBarState>();
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   bool _selectionMode = false;
   Set<String> _selectedRecordIds = const <String>{};
+  bool _favoriteOnly = false;
+  bool _searchExpanded = false;
+  String _searchQuery = '';
   int _attachmentCount = 0;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +96,26 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
           ),
           Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: IconButton(
+              tooltip: _favoriteOnly ? '显示全部' : '只看收藏',
+              onPressed: _toggleFavoriteFilter,
+              color: _favoriteOnly ? Colors.orange.shade700 : null,
+              icon: Icon(
+                _favoriteOnly ? Icons.star_rounded : Icons.star_border_rounded,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: IconButton(
+              tooltip: _searchExpanded ? '关闭搜索' : '搜索提示词',
+              onPressed: _toggleSearchPanel,
+              color: _searchExpanded ? Colors.blue.shade600 : null,
+              icon: const Icon(Icons.search_rounded),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               tooltip: '设置',
@@ -92,6 +124,50 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(_searchExpanded ? 52 : 0),
+          child: ClipRect(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              height: _searchExpanded ? 52 : 0,
+              padding: EdgeInsets.fromLTRB(12, 0, 12, _searchExpanded ? 8 : 0),
+              alignment: Alignment.topCenter,
+              child: _searchExpanded
+                  ? TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: _handleSearchChanged,
+                      minLines: 1,
+                      maxLines: 1,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: '搜索 Prompt',
+                        prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                        suffixIcon: _searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: '清空搜索',
+                                onPressed: _clearSearchQuery,
+                                icon: const Icon(Icons.close_rounded, size: 18),
+                              ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ),
       ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
@@ -144,6 +220,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             onRetryRecord: _retryRecord,
                             onCancelRecord: _cancelRecord,
                             onDeleteRecord: _deleteRecord,
+                            onToggleFavorite: _toggleRecordFavorite,
                             currentAttachmentCount: _attachmentCount,
                             onAppendRecordToAttachments:
                                 _appendRecordToAttachments,
@@ -151,6 +228,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                             selectedRecordIds: _selectedRecordIds,
                             onToggleSelection: _toggleRecordSelection,
                             onSelectRecord: _selectRecord,
+                            favoriteOnly: _favoriteOnly,
+                            searchQuery: _searchQuery,
                           ),
                         ),
                         BottomInputBar(
@@ -199,6 +278,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
 
     await ref.read(imageListProvider.notifier).removeRecord(record.id);
+  }
+
+  Future<void> _toggleRecordFavorite(ImageRecord record) async {
+    await ref.read(imageListProvider.notifier).toggleFavorite(record.id);
   }
 
   Future<void> _appendRecordToAttachments(ImageRecord record) async {
@@ -254,6 +337,52 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     setState(() {
       _selectedRecordIds = {..._selectedRecordIds, recordId};
+    });
+  }
+
+  void _toggleFavoriteFilter() {
+    setState(() {
+      _selectionMode = false;
+      _selectedRecordIds = const <String>{};
+      _favoriteOnly = !_favoriteOnly;
+    });
+  }
+
+  void _toggleSearchPanel() {
+    if (_searchExpanded) {
+      _searchController.clear();
+      _searchFocusNode.unfocus();
+      setState(() {
+        _selectionMode = false;
+        _selectedRecordIds = const <String>{};
+        _searchExpanded = false;
+        _searchQuery = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _selectionMode = false;
+      _selectedRecordIds = const <String>{};
+      _searchExpanded = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _handleSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+    });
+  }
+
+  void _clearSearchQuery() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
     });
   }
 

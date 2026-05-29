@@ -21,6 +21,7 @@ class ImageCell extends ConsumerWidget {
     required this.onRetry,
     required this.onCancel,
     required this.onDelete,
+    required this.onToggleFavorite,
     required this.selectionMode,
     required this.selected,
     required this.onSelectionToggle,
@@ -35,6 +36,7 @@ class ImageCell extends ConsumerWidget {
   final VoidCallback onRetry;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
+  final VoidCallback onToggleFavorite;
   final bool selectionMode;
   final bool selected;
   final VoidCallback onSelectionToggle;
@@ -153,7 +155,7 @@ class ImageCell extends ConsumerWidget {
                       const Spacer(),
                       Row(
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
                               _formatTime(record.createdAt),
                               maxLines: 1,
@@ -165,6 +167,14 @@ class ImageCell extends ConsumerWidget {
                               ),
                             ),
                           ),
+                          if (record.isFavorite) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: Colors.orange.shade700,
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -286,6 +296,19 @@ class ImageCell extends ConsumerWidget {
                     onAppendCurrentImageToAttachments();
                   },
                 ),
+              ListTile(
+                leading: Icon(
+                  record.isFavorite
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  color: record.isFavorite ? Colors.orange.shade700 : null,
+                ),
+                title: Text(record.isFavorite ? '取消收藏' : '收藏'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onToggleFavorite();
+                },
+              ),
               if (record.status == ImageRecordStatus.loading ||
                   record.status == ImageRecordStatus.pending)
                 ListTile(

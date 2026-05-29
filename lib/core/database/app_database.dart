@@ -48,6 +48,8 @@ class ImageRecordsTable extends Table {
   BoolColumn get usedSingleImageFallback =>
       boolean().withDefault(const Constant(false))();
 
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -86,7 +88,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +113,12 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(
           imageRecordsTable,
           imageRecordsTable.sourceImagePaths,
+        );
+      }
+      if (from < 5) {
+        await migrator.addColumn(
+          imageRecordsTable,
+          imageRecordsTable.isFavorite,
         );
       }
     },

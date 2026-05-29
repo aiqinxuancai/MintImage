@@ -1,7 +1,31 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mint_image/core/models/generation_request.dart';
 import 'package:mint_image/core/models/image_record.dart';
 
 void main() {
+  test('pending records start unstarred and copyWith can toggle favorite', () {
+    final record = ImageRecord.pending(
+      id: 'record-0',
+      request: const GenerationRequest(
+        prompt: 'city',
+        imagePaths: [],
+        sizePreset: SizePreset.square1k,
+        customWidth: 1024,
+        customHeight: 1024,
+        quality: ImageQuality.medium,
+        count: 1,
+        apiProfileId: 'default',
+      ),
+      model: 'gpt-image-2',
+      createdAt: DateTime(2026, 5, 10),
+    );
+
+    final favorited = record.copyWith(isFavorite: true);
+
+    expect(record.isFavorite, isFalse);
+    expect(favorited.isFavorite, isTrue);
+  });
+
   test('markCancelled clears transient generation state', () {
     final record = ImageRecord(
       id: 'record-1',
@@ -22,6 +46,7 @@ void main() {
       createdAt: DateTime(2026, 5, 10),
       durationMs: 1234,
       usedSingleImageFallback: true,
+      isFavorite: true,
     );
 
     final cancelled = record.markCancelled();
@@ -36,6 +61,7 @@ void main() {
     expect(cancelled.sourceImagePath, 'source.png');
     expect(cancelled.sourceImagePaths, const ['source.png']);
     expect(cancelled.durationMs, 1234);
+    expect(cancelled.isFavorite, isTrue);
   });
 
   test('recoverInterruptedGeneration only changes active records', () {
@@ -58,6 +84,7 @@ void main() {
       createdAt: DateTime(2026, 5, 10),
       durationMs: null,
       usedSingleImageFallback: false,
+      isFavorite: false,
     );
     final doneRecord = ImageRecord(
       id: 'record-3',
@@ -78,6 +105,7 @@ void main() {
       createdAt: DateTime(2026, 5, 10),
       durationMs: 2000,
       usedSingleImageFallback: false,
+      isFavorite: false,
     );
 
     final recoveredLoading = loadingRecord.recoverInterruptedGeneration();
