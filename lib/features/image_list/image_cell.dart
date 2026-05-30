@@ -250,20 +250,18 @@ class ImageCell extends ConsumerWidget {
   }
 
   Widget _buildStatusWidget(BuildContext context) {
-    final isInfoTapEnabled =
-        record.status == ImageRecordStatus.error &&
-        record.errorMessage != null &&
-        record.errorMessage!.isNotEmpty;
-
     final chip = _StatusPill(status: record.status);
-    if (!isInfoTapEnabled) {
+    if (record.status != ImageRecordStatus.error) {
       return chip;
     }
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: () => _showErrorDetails(context),
-      child: chip,
+    return Tooltip(
+      message: '查看失败原因',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => _showErrorDetails(context),
+        child: chip,
+      ),
     );
   }
 
@@ -357,17 +355,17 @@ class ImageCell extends ConsumerWidget {
   }
 
   Future<void> _showErrorDetails(BuildContext context) async {
-    final message = record.errorMessage;
-    if (message == null || message.isEmpty) {
-      return;
-    }
+    final message = record.errorMessage?.trim();
+    final displayMessage = message == null || message.isEmpty
+        ? '没有记录到具体失败原因。'
+        : message;
 
     await showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('信息'),
-          content: SelectableText(message),
+          title: const Text('失败原因'),
+          content: SelectableText(displayMessage),
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
