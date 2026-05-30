@@ -684,8 +684,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(ctx).textTheme.bodySmall
                                         ?.copyWith(
-                                          color:
-                                              AppThemeTokens.textSecondary,
+                                          color: AppThemeTokens.textSecondary,
                                         ),
                                   ),
                                 ],
@@ -717,7 +716,9 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       return;
     }
 
-    await ref.read(settingsProvider.notifier).setActiveProfile(selectedProfileId);
+    await ref
+        .read(settingsProvider.notifier)
+        .setActiveProfile(selectedProfileId);
     if (!mounted) {
       return;
     }
@@ -1105,8 +1106,8 @@ class _SendButtonState extends State<_SendButton> {
             child: InkWell(
               onTap: widget.enabled ? _handleTap : null,
               onTapDown: widget.enabled ? (_) => _startLongPressTimer() : null,
-              onTapUp: widget.enabled ? (_) => _cancelLongPressTimer() : null,
-              onTapCancel: widget.enabled ? _cancelLongPressTimer : null,
+              onTapUp: widget.enabled ? (_) => _handleTapUp() : null,
+              onTapCancel: widget.enabled ? _handleTapCancel : null,
               borderRadius: BorderRadius.circular(15),
               child: const Center(
                 child: Icon(
@@ -1135,14 +1136,37 @@ class _SendButtonState extends State<_SendButton> {
     _cancelLongPressTimer();
     _longPressTriggered = false;
     _longPressTimer = Timer(_longPressDelay, () {
+      if (!mounted || !widget.enabled) {
+        return;
+      }
       _longPressTimer = null;
       _longPressTriggered = true;
       widget.onLongPress();
     });
   }
 
+  void _handleTapUp() {
+    _cancelLongPressTimer();
+    if (_longPressTriggered) {
+      _resetLongPressTriggeredSoon();
+    }
+  }
+
+  void _handleTapCancel() {
+    _cancelLongPressTimer();
+    _resetLongPressTriggeredSoon();
+  }
+
   void _cancelLongPressTimer() {
     _longPressTimer?.cancel();
     _longPressTimer = null;
+  }
+
+  void _resetLongPressTriggeredSoon() {
+    Future<void>.delayed(Duration.zero, () {
+      if (mounted) {
+        _longPressTriggered = false;
+      }
+    });
   }
 }
