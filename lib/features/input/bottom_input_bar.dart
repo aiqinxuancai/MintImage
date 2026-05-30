@@ -1047,7 +1047,7 @@ class _PromptOptimizeButtonState extends State<_PromptOptimizeButton>
   }
 }
 
-class _SendButton extends StatefulWidget {
+class _SendButton extends StatelessWidget {
   const _SendButton({
     super.key,
     required this.enabled,
@@ -1060,39 +1060,14 @@ class _SendButton extends StatefulWidget {
   final VoidCallback onLongPress;
 
   @override
-  State<_SendButton> createState() => _SendButtonState();
-}
-
-class _SendButtonState extends State<_SendButton> {
-  static const _longPressDelay = Duration(seconds: 2);
-
-  Timer? _longPressTimer;
-  bool _longPressTriggered = false;
-
-  @override
-  void didUpdateWidget(covariant _SendButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.enabled && oldWidget.enabled) {
-      _cancelLongPressTimer();
-      _longPressTriggered = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _cancelLongPressTimer();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final colors = widget.enabled
+    final colors = enabled
         ? const [AppThemeTokens.primary, AppThemeTokens.primaryStrong]
         : const [Color(0xFFB9C7D4), Color(0xFFB9C7D4)];
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
-      opacity: widget.enabled ? 1 : 0.7,
+      opacity: enabled ? 1 : 0.7,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: colors),
@@ -1104,10 +1079,8 @@ class _SendButtonState extends State<_SendButton> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: widget.enabled ? _handleTap : null,
-              onTapDown: widget.enabled ? (_) => _startLongPressTimer() : null,
-              onTapUp: widget.enabled ? (_) => _handleTapUp() : null,
-              onTapCancel: widget.enabled ? _handleTapCancel : null,
+              onTap: enabled ? onTap : null,
+              onLongPress: enabled ? onLongPress : null,
               borderRadius: BorderRadius.circular(15),
               child: const Center(
                 child: Icon(
@@ -1121,52 +1094,5 @@ class _SendButtonState extends State<_SendButton> {
         ),
       ),
     );
-  }
-
-  void _handleTap() {
-    if (_longPressTriggered) {
-      _longPressTriggered = false;
-      return;
-    }
-
-    widget.onTap();
-  }
-
-  void _startLongPressTimer() {
-    _cancelLongPressTimer();
-    _longPressTriggered = false;
-    _longPressTimer = Timer(_longPressDelay, () {
-      if (!mounted || !widget.enabled) {
-        return;
-      }
-      _longPressTimer = null;
-      _longPressTriggered = true;
-      widget.onLongPress();
-    });
-  }
-
-  void _handleTapUp() {
-    _cancelLongPressTimer();
-    if (_longPressTriggered) {
-      _resetLongPressTriggeredSoon();
-    }
-  }
-
-  void _handleTapCancel() {
-    _cancelLongPressTimer();
-    _resetLongPressTriggeredSoon();
-  }
-
-  void _cancelLongPressTimer() {
-    _longPressTimer?.cancel();
-    _longPressTimer = null;
-  }
-
-  void _resetLongPressTriggeredSoon() {
-    Future<void>.delayed(Duration.zero, () {
-      if (mounted) {
-        _longPressTriggered = false;
-      }
-    });
   }
 }

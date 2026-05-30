@@ -151,14 +151,10 @@ void main() {
     );
 
     await tester.enterText(find.byKey(const Key('prompt-input')), '山谷日出');
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byKey(const Key('submit-generation-button'))),
-    );
-    await tester.pump(const Duration(milliseconds: 2100));
-    expect(find.text('切换到API配置并发送'), findsOneWidget);
-    await gesture.up();
+    await tester.longPress(find.byKey(const Key('submit-generation-button')));
     await tester.pumpAndSettle();
 
+    expect(find.text('切换到API配置并发送'), findsOneWidget);
     expect(find.widgetWithText(InkWell, 'API'), findsNothing);
     expect(find.text('备用'), findsOneWidget);
     expect(find.text('第三'), findsOneWidget);
