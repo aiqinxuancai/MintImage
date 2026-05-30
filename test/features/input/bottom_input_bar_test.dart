@@ -131,19 +131,43 @@ void main() {
     expect(submittedRequest!.outputFormat, ImageOutputFormat.webp);
   });
 
-  testWidgets('shows desktop api source switcher and can change profile', (
-    tester,
-  ) async {
+  testWidgets('does not show inline api source switcher', (tester) async {
     await _pumpInputBar(tester, settings: _settingsWithTwoProfiles);
 
-    expect(find.byTooltip('切换生图 API'), findsOneWidget);
+    expect(find.byTooltip('切换生图 API'), findsNothing);
+    expect(find.text('备用'), findsNothing);
+  });
 
-    await tester.tap(find.byTooltip('切换生图 API'));
+  testWidgets('long pressing send switches api profile and submits', (
+    tester,
+  ) async {
+    GenerationRequest? submittedRequest;
+    await _pumpInputBar(
+      tester,
+      settings: _settingsWithThreeProfiles,
+      onSubmit: (request) async {
+        submittedRequest = request;
+      },
+    );
+
+    await tester.enterText(find.byKey(const Key('prompt-input')), '山谷日出');
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('submit-generation-button'))),
+    );
+    await tester.pump(const Duration(milliseconds: 2100));
+    expect(find.text('切换到API配置并发送'), findsOneWidget);
+    await gesture.up();
     await tester.pumpAndSettle();
 
+    expect(find.widgetWithText(InkWell, 'API'), findsNothing);
     expect(find.text('备用'), findsOneWidget);
+    expect(find.text('第三'), findsOneWidget);
+
     await tester.tap(find.text('备用'));
     await tester.pumpAndSettle();
+
+    expect(submittedRequest, isNotNull);
+    expect(submittedRequest!.apiProfileId, 'api-2');
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(BottomInputBar)),
@@ -221,11 +245,26 @@ const _settingsWithTwoProfiles = SettingsModel(
   activePromptOptimizationProfileId: 'optimizer',
 );
 
+const _settingsWithThreeProfiles = SettingsModel(
+  profiles: [_apiProfile, _apiProfile2, _apiProfile3],
+  activeProfileId: 'api',
+  promptOptimizationProfiles: [_promptOptimizationProfile],
+  activePromptOptimizationProfileId: 'optimizer',
+);
+
 const _apiProfile2 = ApiProfile(
   id: 'api-2',
   name: '备用',
   baseUrl: 'https://api.openai.com',
   apiKey: 'test-key-2',
+  model: 'gpt-image-2',
+);
+
+const _apiProfile3 = ApiProfile(
+  id: 'api-3',
+  name: '第三',
+  baseUrl: 'https://api.openai.com',
+  apiKey: 'test-key-3',
   model: 'gpt-image-2',
 );
 

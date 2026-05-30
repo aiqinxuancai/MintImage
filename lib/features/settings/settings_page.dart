@@ -810,29 +810,35 @@ class _RequestTimeoutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: AppDecorations.card(radius: 28),
-      padding: const EdgeInsets.all(18),
+      decoration: AppDecorations.card(radius: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppThemeTokens.surfaceSoft,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.timer_outlined),
+            child: const Icon(Icons.timer_outlined, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text('请求超时', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
+                Text(
+                  '请求超时',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   '$timeoutSeconds 秒',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppThemeTokens.textSecondary,
                   ),
                 ),
@@ -864,33 +870,26 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: AppDecorations.card(radius: 28),
-      padding: const EdgeInsets.all(18),
+      decoration: AppDecorations.card(radius: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppThemeTokens.surfaceSoft,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon),
+            child: Icon(icon, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppThemeTokens.textSecondary,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
           FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),

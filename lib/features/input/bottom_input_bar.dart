@@ -17,7 +17,6 @@ import '../../core/providers/settings_provider.dart';
 import '../../core/services/attachment_picker_service.dart';
 import '../../shared/theme.dart';
 import 'attachment_preview_strip.dart';
-import 'api_profile_selector.dart';
 import 'image_format_selector.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
@@ -222,6 +221,11 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     final settings = ref.watch(settingsProvider);
     final activeProfile = settings.activeProfile;
     final hasApiKey = activeProfile.apiKey.trim().isNotEmpty;
+    final otherProfiles = settings.profiles
+        .where((profile) => profile.id != settings.activeProfileId)
+        .toList();
+    final canUseSendButton =
+        !_optimizingPrompt && (hasApiKey || otherProfiles.isNotEmpty);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final theme = Theme.of(context);
 
@@ -361,8 +365,9 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                           const SizedBox(width: 7),
                           _SendButton(
                             key: const Key('submit-generation-button'),
-                            enabled: hasApiKey && !_optimizingPrompt,
+                            enabled: canUseSendButton,
                             onTap: _submit,
+                            onLongPress: _showApiProfileSendSheet,
                           ),
                         ],
                       ),
@@ -418,18 +423,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       });
                                     },
                                   ),
-                                  if (_showsApiSourceSelector) ...[
-                                    const SizedBox(width: 6),
-                                    ApiProfileSelector(
-                                      profiles: settings.profiles,
-                                      activeProfileId: settings.activeProfileId,
-                                      onSelected: (profileId) async {
-                                        await ref
-                                            .read(settingsProvider.notifier)
-                                            .setActiveProfile(profileId);
-                                      },
-                                    ),
-                                  ],
                                 ],
                               ),
                             ),
@@ -461,7 +454,9 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                       if (!hasApiKey) ...[
                         const SizedBox(height: 6),
                         Text(
-                          '当前配置缺少 API Key，发送按钮已禁用。',
+                          otherProfiles.isEmpty
+                              ? '当前配置缺少 API Key，发送按钮已禁用。'
+                              : '当前配置缺少 API Key，可长按发送切换其他配置。',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.red.shade700,
                             fontWeight: FontWeight.w700,
@@ -506,10 +501,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   bool get _isDesktopPlatform {
     return !kIsWeb &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
-  }
-
-  bool get _showsApiSourceSelector {
-    return Platform.isWindows || Platform.isMacOS;
   }
 
   void _insertNewLine() {
@@ -557,14 +548,20 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     _setAttachments([..._attachments, ...valid]);
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({String? apiProfileId}) async {
     if (_submitting || _optimizingPrompt) {
       return;
     }
 
     final settings = ref.read(settingsProvider);
-    final activeProfile = settings.activeProfile;
+    final selectedProfileId = apiProfileId ?? settings.activeProfileId;
+    final activeProfile = settings.profileById(selectedProfileId);
     final prompt = _promptController.text.trim();
+
+    if (activeProfile == null) {
+      _showMessage('当前 API 配置不存在，请重新选择。');
+      return;
+    }
 
     if (activeProfile.apiKey.trim().isEmpty) {
       _showMessage('请先在设置中填写 API Key。');
@@ -591,7 +588,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
           quality: _quality,
           outputFormat: _outputFormat,
           count: _count,
-          apiProfileId: settings.activeProfileId,
+          apiProfileId: selectedProfileId,
         ),
       );
 
@@ -608,6 +605,123 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
         });
       }
     }
+  }
+
+  Future<void> _showApiProfileSendSheet() async {
+    if (_submitting || _optimizingPrompt) {
+      return;
+    }
+
+    final settings = ref.read(settingsProvider);
+    final profiles = settings.profiles
+        .where((profile) => profile.id != settings.activeProfileId)
+        .toList();
+    if (profiles.isEmpty) {
+      _showMessage('没有其他生图 API 配置。');
+      return;
+    }
+
+    final selectedProfileId = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '切换到API配置并发送',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final profile in profiles)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => Navigator.of(ctx).pop(profile.id),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppThemeTokens.surfaceSoft,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppThemeTokens.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.hub_rounded,
+                              size: 18,
+                              color: AppThemeTokens.primaryStrong,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    profile.name,
+                                    style: Theme.of(ctx).textTheme.labelLarge
+                                        ?.copyWith(
+                                          color: AppThemeTokens.textPrimary,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    profile.normalizedBaseUrl,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(ctx).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color:
+                                              AppThemeTokens.textSecondary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Icon(
+                              profile.apiKey.trim().isEmpty
+                                  ? Icons.key_off_rounded
+                                  : Icons.arrow_upward_rounded,
+                              size: 18,
+                              color: profile.apiKey.trim().isEmpty
+                                  ? AppThemeTokens.textSecondary
+                                  : AppThemeTokens.primaryStrong,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selectedProfileId == null) {
+      return;
+    }
+
+    await ref.read(settingsProvider.notifier).setActiveProfile(selectedProfileId);
+    if (!mounted) {
+      return;
+    }
+    await _submit(apiProfileId: selectedProfileId);
   }
 
   Future<void> _handlePromptOptimizationTap() async {
@@ -932,21 +1046,52 @@ class _PromptOptimizeButtonState extends State<_PromptOptimizeButton>
   }
 }
 
-class _SendButton extends StatelessWidget {
-  const _SendButton({super.key, required this.enabled, required this.onTap});
+class _SendButton extends StatefulWidget {
+  const _SendButton({
+    super.key,
+    required this.enabled,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   final bool enabled;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_SendButton> createState() => _SendButtonState();
+}
+
+class _SendButtonState extends State<_SendButton> {
+  static const _longPressDelay = Duration(seconds: 2);
+
+  Timer? _longPressTimer;
+  bool _longPressTriggered = false;
+
+  @override
+  void didUpdateWidget(covariant _SendButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && oldWidget.enabled) {
+      _cancelLongPressTimer();
+      _longPressTriggered = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelLongPressTimer();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = enabled
+    final colors = widget.enabled
         ? const [AppThemeTokens.primary, AppThemeTokens.primaryStrong]
         : const [Color(0xFFB9C7D4), Color(0xFFB9C7D4)];
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
-      opacity: enabled ? 1 : 0.7,
+      opacity: widget.enabled ? 1 : 0.7,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: colors),
@@ -958,7 +1103,10 @@ class _SendButton extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: enabled ? onTap : null,
+              onTap: widget.enabled ? _handleTap : null,
+              onTapDown: widget.enabled ? (_) => _startLongPressTimer() : null,
+              onTapUp: widget.enabled ? (_) => _cancelLongPressTimer() : null,
+              onTapCancel: widget.enabled ? _cancelLongPressTimer : null,
               borderRadius: BorderRadius.circular(15),
               child: const Center(
                 child: Icon(
@@ -972,5 +1120,29 @@ class _SendButton extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _handleTap() {
+    if (_longPressTriggered) {
+      _longPressTriggered = false;
+      return;
+    }
+
+    widget.onTap();
+  }
+
+  void _startLongPressTimer() {
+    _cancelLongPressTimer();
+    _longPressTriggered = false;
+    _longPressTimer = Timer(_longPressDelay, () {
+      _longPressTimer = null;
+      _longPressTriggered = true;
+      widget.onLongPress();
+    });
+  }
+
+  void _cancelLongPressTimer() {
+    _longPressTimer?.cancel();
+    _longPressTimer = null;
   }
 }
