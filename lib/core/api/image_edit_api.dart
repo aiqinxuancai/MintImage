@@ -6,6 +6,7 @@ import '../models/generation_result.dart';
 import '../models/settings_model.dart';
 import '../services/request_log_service.dart';
 import 'openai_client.dart';
+import 'responses_image_api.dart';
 
 class ImageEditApi {
   const ImageEditApi({this.requestLogService});
@@ -28,6 +29,33 @@ class ImageEditApi {
       timeoutSeconds: timeoutSeconds,
       requestLogService: requestLogService,
     );
+
+    if (profile.apiMode == ImageGenerationApiMode.responses) {
+      final response = await client.postJson(
+        '/v1/responses',
+        buildResponsesImageBody(
+          request: request,
+          profile: profile,
+          input: [
+            {
+              'role': 'user',
+              'content': [
+                {'type': 'input_text', 'text': request.prompt},
+                for (final path in request.imagePaths)
+                  {
+                    'type': 'input_image',
+                    'image_url': await imagePathToDataUrl(path),
+                  },
+              ],
+            },
+          ],
+          action: 'edit',
+        ),
+        cancelToken: cancelToken,
+      );
+      return parseResponsesImageResults(response);
+    }
+
     final formData = FormData();
 
     final fields = <MapEntry<String, String>>[

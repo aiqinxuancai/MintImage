@@ -4,6 +4,43 @@ import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();
 
+enum ImageGenerationApiMode {
+  images('images', 'Images API (/v1/images)', 'Images API', 'gpt-image-2'),
+  responses(
+    'responses',
+    'Responses API (/v1/responses)',
+    'Responses API',
+    'gpt-5.5',
+  );
+
+  const ImageGenerationApiMode(
+    this.storageValue,
+    this.label,
+    this.shortLabel,
+    this.defaultModel,
+  );
+
+  final String storageValue;
+  final String label;
+  final String shortLabel;
+  final String defaultModel;
+
+  String get generationPath {
+    return switch (this) {
+      ImageGenerationApiMode.images => '/v1/images/generations',
+      ImageGenerationApiMode.responses => '/v1/responses',
+    };
+  }
+
+  static ImageGenerationApiMode fromStorageValue(Object? rawValue) {
+    final value = rawValue is String ? rawValue : '';
+    return ImageGenerationApiMode.values.firstWhere(
+      (mode) => mode.storageValue == value,
+      orElse: () => ImageGenerationApiMode.images,
+    );
+  }
+}
+
 class ApiProfile {
   const ApiProfile({
     required this.id,
@@ -11,9 +48,14 @@ class ApiProfile {
     required this.baseUrl,
     required this.apiKey,
     required this.model,
+    this.apiMode = ImageGenerationApiMode.images,
   });
 
   factory ApiProfile.initial() {
+    final apiMode = ImageGenerationApiMode.fromStorageValue(
+      const String.fromEnvironment('API_MODE', defaultValue: 'images'),
+    );
+    const configuredModel = String.fromEnvironment('MODEL');
     return ApiProfile(
       id: _uuid.v4(),
       name: '默认',
@@ -22,17 +64,20 @@ class ApiProfile {
         defaultValue: 'https://api.openai.com',
       ),
       apiKey: const String.fromEnvironment('API_KEY'),
-      model: const String.fromEnvironment('MODEL', defaultValue: 'gpt-image-2'),
+      model: configuredModel.isEmpty ? apiMode.defaultModel : configuredModel,
+      apiMode: apiMode,
     );
   }
 
   factory ApiProfile.fromJson(Map<String, dynamic> json) {
+    final apiMode = ImageGenerationApiMode.fromStorageValue(json['apiMode']);
     return ApiProfile(
       id: json['id'] as String,
       name: json['name'] as String? ?? '默认',
       baseUrl: json['baseUrl'] as String? ?? 'https://api.openai.com',
       apiKey: json['apiKey'] as String? ?? '',
-      model: json['model'] as String? ?? 'gpt-image-2',
+      model: json['model'] as String? ?? apiMode.defaultModel,
+      apiMode: apiMode,
     );
   }
 
@@ -41,12 +86,19 @@ class ApiProfile {
   final String baseUrl;
   final String apiKey;
   final String model;
+  final ImageGenerationApiMode apiMode;
 
   String get normalizedBaseUrl => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
 
-  String get generationEndpoint => '$normalizedBaseUrl/v1/images/generations';
+  String get generationEndpoint =>
+      '$normalizedBaseUrl${apiMode.generationPath}';
 
-  String get editEndpoint => '$normalizedBaseUrl/v1/images/edits';
+  String get editEndpoint {
+    return switch (apiMode) {
+      ImageGenerationApiMode.images => '$normalizedBaseUrl/v1/images/edits',
+      ImageGenerationApiMode.responses => '$normalizedBaseUrl/v1/responses',
+    };
+  }
 
   ApiProfile copyWith({
     String? id,
@@ -54,6 +106,7 @@ class ApiProfile {
     String? baseUrl,
     String? apiKey,
     String? model,
+    ImageGenerationApiMode? apiMode,
   }) {
     return ApiProfile(
       id: id ?? this.id,
@@ -61,6 +114,7 @@ class ApiProfile {
       baseUrl: baseUrl ?? this.baseUrl,
       apiKey: apiKey ?? this.apiKey,
       model: model ?? this.model,
+      apiMode: apiMode ?? this.apiMode,
     );
   }
 
@@ -71,6 +125,7 @@ class ApiProfile {
       'baseUrl': baseUrl,
       'apiKey': apiKey,
       'model': model,
+      'apiMode': apiMode.storageValue,
     };
   }
 }

@@ -42,6 +42,7 @@ class SettingsController extends StateNotifier<SettingsModel> {
     String? baseUrl,
     String? apiKey,
     String? model,
+    ImageGenerationApiMode apiMode = ImageGenerationApiMode.images,
   }) async {
     final nextIndex = state.profiles.length + 1;
     final profile = ApiProfile(
@@ -49,7 +50,8 @@ class SettingsController extends StateNotifier<SettingsModel> {
       name: name ?? '配置 $nextIndex',
       baseUrl: baseUrl ?? 'https://api.openai.com',
       apiKey: apiKey ?? '',
-      model: model ?? 'gpt-image-2',
+      model: model ?? apiMode.defaultModel,
+      apiMode: apiMode,
     );
     state = state.copyWith(
       profiles: [...state.profiles, profile],

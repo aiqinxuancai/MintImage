@@ -10,7 +10,10 @@ void main() {
   final runLiveGeneration = Platform.environment['RUN_LIVE_GENERATION'] == '1';
   final baseUrl = Platform.environment['TEST_BASE_URL'];
   final apiKey = Platform.environment['TEST_API_KEY'];
-  final model = Platform.environment['TEST_MODEL'] ?? 'gpt-image-2';
+  final apiMode = ImageGenerationApiMode.fromStorageValue(
+    Platform.environment['TEST_API_MODE'],
+  );
+  final model = Platform.environment['TEST_MODEL'] ?? apiMode.defaultModel;
   final prompt =
       Platform.environment['TEST_PROMPT'] ??
       'a clean light blue abstract icon on a white background';
@@ -38,6 +41,7 @@ void main() {
         baseUrl: baseUrl!,
         apiKey: apiKey!,
         model: model,
+        apiMode: apiMode,
       );
 
       final results = await api.generate(

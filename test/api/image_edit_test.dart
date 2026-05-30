@@ -129,6 +129,92 @@ void main() {
 
       expect(results.single.imageUrl, 'https://example.com/image.png');
     });
+
+    test('uses Responses API mode with input image data URLs', () async {
+      final tempDir = await Directory.systemTemp.createTemp('gpt-edit-api');
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final first = await File(
+        p.join(tempDir.path, 'first.png'),
+      ).writeAsBytes(<int>[1, 2, 3, 4]);
+      final responseImage = base64Encode(<int>[4, 3, 2, 1]);
+
+      final server = await _startServer((request) async {
+        expect(request.method, 'POST');
+        expect(request.uri.path, '/v1/responses');
+        expect(request.headers.contentType?.mimeType, 'application/json');
+
+        final body =
+            jsonDecode(await utf8.decoder.bind(request).join())
+                as Map<String, dynamic>;
+
+        expect(body['model'], 'gpt-5.5');
+        expect(body['tool_choice'], 'required');
+
+        final input = body['input'] as List;
+        final message = input.single as Map<String, dynamic>;
+        final content = message['content'] as List;
+        expect(content.first, {
+          'type': 'input_text',
+          'text': 'turn this into a watercolor poster',
+        });
+        final imageContent = content[1] as Map<String, dynamic>;
+        expect(imageContent['type'], 'input_image');
+        expect(
+          imageContent['image_url'],
+          'data:image/png;base64,${base64Encode(<int>[1, 2, 3, 4])}',
+        );
+
+        final tools = body['tools'] as List;
+        final tool = tools.single as Map<String, dynamic>;
+        expect(tool['type'], 'image_generation');
+        expect(tool['action'], 'edit');
+        expect(tool['size'], '1536x1024');
+        expect(tool['quality'], 'medium');
+        expect(tool['output_format'], 'webp');
+
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'id': 'resp_123',
+            'output': [
+              {
+                'id': 'ig_123',
+                'type': 'image_generation_call',
+                'result': responseImage,
+              },
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+      addTearDown(server.close);
+
+      final api = const ImageEditApi();
+      final request = GenerationRequest(
+        prompt: 'turn this into a watercolor poster',
+        imagePaths: [first.path],
+        sizePreset: SizePreset.posterLandscape,
+        customWidth: 1536,
+        customHeight: 1024,
+        quality: ImageQuality.medium,
+        outputFormat: ImageOutputFormat.webp,
+        count: 1,
+        apiProfileId: 'default',
+      );
+
+      final results = await api.edit(
+        request,
+        _profileFor(
+          server,
+          model: 'gpt-5.5',
+          apiMode: ImageGenerationApiMode.responses,
+        ),
+        timeoutSeconds: 600,
+      );
+
+      expect(results.single.b64Json, responseImage);
+    });
   });
 }
 
@@ -152,12 +238,17 @@ Future<List<int>> _collectBytes(HttpRequest request) async {
   return bytes;
 }
 
-ApiProfile _profileFor(HttpServer server) {
+ApiProfile _profileFor(
+  HttpServer server, {
+  String model = 'gpt-image-2',
+  ImageGenerationApiMode apiMode = ImageGenerationApiMode.images,
+}) {
   return ApiProfile(
     id: 'default',
     name: '默认',
     baseUrl: 'http://${server.address.host}:${server.port}',
     apiKey: 'test-key',
-    model: 'gpt-image-2',
+    model: model,
+    apiMode: apiMode,
   );
 }

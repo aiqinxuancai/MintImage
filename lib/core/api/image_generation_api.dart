@@ -5,6 +5,7 @@ import '../models/generation_result.dart';
 import '../models/settings_model.dart';
 import '../services/request_log_service.dart';
 import 'openai_client.dart';
+import 'responses_image_api.dart';
 
 class ImageGenerationApi {
   const ImageGenerationApi({this.requestLogService});
@@ -23,6 +24,21 @@ class ImageGenerationApi {
       timeoutSeconds: timeoutSeconds,
       requestLogService: requestLogService,
     );
+
+    if (profile.apiMode == ImageGenerationApiMode.responses) {
+      final response = await client.postJson(
+        '/v1/responses',
+        buildResponsesImageBody(
+          request: request,
+          profile: profile,
+          input: request.prompt,
+          action: 'generate',
+        ),
+        cancelToken: cancelToken,
+      );
+      return parseResponsesImageResults(response);
+    }
+
     final body = <String, dynamic>{
       'model': profile.model,
       'prompt': request.prompt,

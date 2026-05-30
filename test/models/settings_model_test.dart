@@ -55,6 +55,21 @@ void main() {
 
     expect(decoded.promptOptimizationProfiles, isEmpty);
     expect(decoded.activePromptOptimizationProfile, isNull);
+    expect(decoded.activeProfile.apiMode, ImageGenerationApiMode.images);
+  });
+
+  test('image API mode is persisted per profile', () {
+    final settings = SettingsModel.initial();
+    final profile = settings.activeProfile.copyWith(
+      model: 'gpt-5.5',
+      apiMode: ImageGenerationApiMode.responses,
+    );
+    final updated = settings.copyWith(profiles: [profile]);
+
+    final decoded = SettingsModel.decode(updated.encode());
+
+    expect(decoded.activeProfile.apiMode, ImageGenerationApiMode.responses);
+    expect(decoded.activeProfile.generationEndpoint, contains('/v1/responses'));
   });
 
   test('legacy b64_json responseFormat is normalized to null', () {

@@ -21,6 +21,7 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
   bool _obscureApiKey = true;
+  late ImageGenerationApiMode _apiMode;
 
   ApiProfile? get _editingProfile => widget.profile;
 
@@ -32,9 +33,10 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
 
     _nameController.text =
         profile?.name ?? '配置 ${settings.profiles.length + 1}';
+    _apiMode = profile?.apiMode ?? ImageGenerationApiMode.images;
     _baseUrlController.text = profile?.baseUrl ?? 'https://api.openai.com';
     _apiKeyController.text = profile?.apiKey ?? '';
-    _modelController.text = profile?.model ?? 'gpt-image-2';
+    _modelController.text = profile?.model ?? _apiMode.defaultModel;
 
     _nameController.addListener(_refresh);
     _baseUrlController.addListener(_refresh);
@@ -60,8 +62,8 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
       '',
     );
     final finalUrl = previewBaseUrl.isEmpty
-        ? 'https://example.com/v1/images/generations'
-        : '$previewBaseUrl/v1/images/generations';
+        ? 'https://example.com${_apiMode.generationPath}'
+        : '$previewBaseUrl${_apiMode.generationPath}';
 
     return Scaffold(
       appBar: AppBar(title: Text(_editingProfile == null ? '新增配置' : '编辑配置')),
@@ -87,7 +89,7 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
                     Text('连接信息', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 6),
                     Text(
-                      '这里维护单组 Base URL、模型名与 API Key。保存后可以直接在主页底部切换。',
+                      '这里维护单组 Base URL、模型名、API Key 与生图 API。保存后可以直接在主页底部切换。',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppThemeTokens.textSecondary,
                       ),
@@ -150,6 +152,32 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    DropdownButtonFormField<ImageGenerationApiMode>(
+                      initialValue: _apiMode,
+                      decoration: const InputDecoration(labelText: '生图 API'),
+                      items: [
+                        for (final mode in ImageGenerationApiMode.values)
+                          DropdownMenuItem(
+                            value: mode,
+                            child: Text(mode.label),
+                          ),
+                      ],
+                      onChanged: (mode) {
+                        if (mode == null) {
+                          return;
+                        }
+                        setState(() {
+                          final previousMode = _apiMode;
+                          _apiMode = mode;
+                          final model = _modelController.text.trim();
+                          if (model.isEmpty ||
+                              model == previousMode.defaultModel) {
+                            _modelController.text = mode.defaultModel;
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _modelController,
                       decoration: const InputDecoration(labelText: '模型名'),
@@ -186,6 +214,7 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
         baseUrl: _baseUrlController.text.trim(),
         apiKey: _apiKeyController.text.trim(),
         model: _modelController.text.trim(),
+        apiMode: _apiMode,
       );
       await notifier.setActiveProfile(created.id);
     } else {
@@ -195,6 +224,7 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
           baseUrl: _baseUrlController.text.trim(),
           apiKey: _apiKeyController.text.trim(),
           model: _modelController.text.trim(),
+          apiMode: _apiMode,
         ),
       );
     }

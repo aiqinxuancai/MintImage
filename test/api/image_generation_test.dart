@@ -156,6 +156,83 @@ void main() {
         expect(results.single.imageUrl, 'https://example.com/image.png');
       },
     );
+
+    test(
+      'uses Responses API mode and parses image_generation_call result',
+      () async {
+        final responseImage = base64Encode(<int>[5, 4, 3, 2]);
+        final server = await _startServer((request) async {
+          expect(request.method, 'POST');
+          expect(request.uri.path, '/v1/responses');
+          expect(
+            request.headers.value(HttpHeaders.authorizationHeader),
+            'Bearer test-key',
+          );
+
+          final body =
+              jsonDecode(await utf8.decoder.bind(request).join())
+                  as Map<String, dynamic>;
+
+          expect(body['model'], 'gpt-5.5');
+          expect(body['input'], 'a red apple on white background');
+          expect(body['tool_choice'], 'required');
+          expect(body.containsKey('response_format'), isFalse);
+
+          final tools = body['tools'] as List;
+          final tool = tools.single as Map<String, dynamic>;
+          expect(tool['type'], 'image_generation');
+          expect(tool['action'], 'generate');
+          expect(tool['size'], '1024x1024');
+          expect(tool['quality'], 'low');
+          expect(tool['output_format'], 'jpeg');
+
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'id': 'resp_123',
+              'output': [
+                {'type': 'message', 'content': []},
+                {
+                  'id': 'ig_123',
+                  'type': 'image_generation_call',
+                  'result': {'b64_json': responseImage},
+                },
+              ],
+            }),
+          );
+          await request.response.close();
+        });
+        addTearDown(server.close);
+
+        final api = const ImageGenerationApi();
+        final request = GenerationRequest(
+          prompt: 'a red apple on white background',
+          imagePaths: const [],
+          sizePreset: SizePreset.square1k,
+          customWidth: 1024,
+          customHeight: 1024,
+          quality: ImageQuality.low,
+          outputFormat: ImageOutputFormat.jpeg,
+          count: 1,
+          apiProfileId: 'default',
+        );
+
+        final results = await api.generate(
+          request,
+          _profileFor(
+            server,
+            model: 'gpt-5.5',
+            apiMode: ImageGenerationApiMode.responses,
+          ),
+          responseFormat: 'url',
+          timeoutSeconds: 600,
+        );
+
+        expect(results, hasLength(1));
+        expect(results.single.b64Json, responseImage);
+        expect(results.single.rawResponseValue, responseImage);
+      },
+    );
   });
 }
 
@@ -171,12 +248,17 @@ Future<HttpServer> _startServer(
   return server;
 }
 
-ApiProfile _profileFor(HttpServer server) {
+ApiProfile _profileFor(
+  HttpServer server, {
+  String model = 'gpt-image-2',
+  ImageGenerationApiMode apiMode = ImageGenerationApiMode.images,
+}) {
   return ApiProfile(
     id: 'default',
     name: '默认',
     baseUrl: 'http://${server.address.host}:${server.port}',
     apiKey: 'test-key',
-    model: 'gpt-image-2',
+    model: model,
+    apiMode: apiMode,
   );
 }

@@ -624,14 +624,38 @@ class _ImageProfileCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 5),
-              Text(
-                profile.normalizedBaseUrl,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppThemeTokens.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.surfaceMuted,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      profile.apiMode.shortLabel,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppThemeTokens.primaryStrong,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      profile.normalizedBaseUrl,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppThemeTokens.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 3),
               Text(
