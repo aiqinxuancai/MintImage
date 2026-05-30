@@ -33,6 +33,7 @@ class ImageRecord {
     required this.width,
     required this.height,
     required this.quality,
+    required this.outputFormat,
     required this.model,
     required this.status,
     required this.errorMessage,
@@ -64,6 +65,7 @@ class ImageRecord {
       width: request.resolvedWidth,
       height: request.resolvedHeight,
       quality: request.quality.apiValue,
+      outputFormat: request.outputFormat.apiValue,
       model: model,
       status: ImageRecordStatus.pending,
       errorMessage: null,
@@ -86,6 +88,7 @@ class ImageRecord {
   final int width;
   final int height;
   final String quality;
+  final String outputFormat;
   final String model;
   final ImageRecordStatus status;
   final String? errorMessage;
@@ -102,6 +105,9 @@ class ImageRecord {
   String get sizeLabel => width == 0 || height == 0 ? '自动' : '$width×$height';
 
   String get qualityLabel => ImageQuality.fromApiValue(quality).label;
+
+  String get outputFormatLabel =>
+      ImageOutputFormat.fromApiValue(outputFormat).label;
 
   List<String> get sourceAttachmentPaths {
     if (sourceImagePaths.isNotEmpty) {
@@ -144,6 +150,7 @@ class ImageRecord {
     int? width,
     int? height,
     String? quality,
+    String? outputFormat,
     String? model,
     ImageRecordStatus? status,
     String? errorMessage,
@@ -174,6 +181,7 @@ class ImageRecord {
       width: width ?? this.width,
       height: height ?? this.height,
       quality: quality ?? this.quality,
+      outputFormat: outputFormat ?? this.outputFormat,
       model: model ?? this.model,
       status: status ?? this.status,
       errorMessage: clearErrorMessage

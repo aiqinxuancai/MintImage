@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/generation_request.dart';
 import '../models/settings_model.dart';
 import 'app_providers.dart';
 
@@ -169,6 +170,23 @@ class SettingsController extends StateNotifier<SettingsModel> {
     }
 
     state = state.copyWith(requestTimeoutSeconds: seconds);
+    await _persist();
+  }
+
+  Future<void> updateLastGenerationOptions({
+    required SizePreset sizePreset,
+    required int customWidth,
+    required int customHeight,
+    required ImageQuality quality,
+    required ImageOutputFormat outputFormat,
+  }) async {
+    state = state.copyWith(
+      lastSizePreset: sizePreset,
+      lastCustomWidth: customWidth,
+      lastCustomHeight: customHeight,
+      lastQuality: quality,
+      lastOutputFormat: outputFormat,
+    );
     await _persist();
   }
 

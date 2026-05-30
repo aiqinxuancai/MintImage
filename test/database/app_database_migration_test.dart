@@ -4,7 +4,7 @@ import 'package:mint_image/core/database/app_database.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 void main() {
-  test('migration skips duplicate is_favorite column', () async {
+  test('migration skips duplicate columns and backfills output format', () async {
     final sqlite = sqlite3.openInMemory();
     sqlite.execute('''
       CREATE TABLE image_records_table (
@@ -31,6 +31,15 @@ void main() {
           CHECK (is_favorite IN (0, 1))
       );
     ''');
+    sqlite.execute('''
+      INSERT INTO image_records_table (
+        id, prompt, api_profile_id, width, height, quality, model, status,
+        created_at, result_image_path
+      ) VALUES (
+        'record-webp', 'city', 'api', 1024, 1024, 'medium', 'gpt-image-2',
+        'done', 0, 'C:/tmp/record-webp.webp'
+      );
+    ''');
     sqlite.execute('PRAGMA user_version = 4;');
 
     final database = AppDatabase.forTesting(
@@ -47,6 +56,16 @@ void main() {
       columns.where((row) => row.data['name'] == 'is_favorite'),
       hasLength(1),
     );
+    expect(
+      columns.where((row) => row.data['name'] == 'output_format'),
+      hasLength(1),
+    );
+    final rows = await database
+        .customSelect(
+          "SELECT output_format FROM image_records_table WHERE id = 'record-webp'",
+        )
+        .get();
+    expect(rows.single.data['output_format'], 'webp');
 
     final favoriteTables = await database
         .customSelect(

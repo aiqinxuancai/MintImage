@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mint_image/core/api/openai_client.dart';
 import 'package:mint_image/core/api/prompt_optimization_api.dart';
+import 'package:mint_image/core/models/generation_request.dart';
+import 'package:mint_image/core/models/image_record.dart';
 import 'package:mint_image/core/models/settings_model.dart';
 import 'package:mint_image/core/providers/app_providers.dart';
 import 'package:mint_image/features/input/bottom_input_bar.dart';
@@ -66,11 +68,75 @@ void main() {
     expect(find.byKey(const Key('prompt-optimization-spinner')), findsNothing);
     expect(find.byTooltip('优化提示词'), findsOneWidget);
   });
+
+  testWidgets('uses last selected generation options from settings', (
+    tester,
+  ) async {
+    GenerationRequest? submittedRequest;
+    await _pumpInputBar(
+      tester,
+      settings: _settings.copyWith(
+        lastSizePreset: SizePreset.posterLandscape,
+        lastCustomWidth: 1536,
+        lastCustomHeight: 1024,
+        lastQuality: ImageQuality.high,
+        lastOutputFormat: ImageOutputFormat.webp,
+      ),
+      onSubmit: (request) async {
+        submittedRequest = request;
+      },
+    );
+
+    expect(find.text('1536×1024'), findsOneWidget);
+    expect(find.text('高'), findsOneWidget);
+    expect(find.text('WEBP'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('prompt-input')), '山谷日出');
+    await tester.tap(find.byKey(const Key('submit-generation-button')));
+    await tester.pump();
+
+    expect(submittedRequest, isNotNull);
+    expect(submittedRequest!.sizePreset, SizePreset.posterLandscape);
+    expect(submittedRequest!.customWidth, 1536);
+    expect(submittedRequest!.customHeight, 1024);
+    expect(submittedRequest!.quality, ImageQuality.high);
+    expect(submittedRequest!.outputFormat, ImageOutputFormat.webp);
+  });
+
+  testWidgets('prefill from record reuses size quality and format', (
+    tester,
+  ) async {
+    final inputBarKey = GlobalKey<BottomInputBarState>();
+    GenerationRequest? submittedRequest;
+    await _pumpInputBar(
+      tester,
+      inputBarKey: inputBarKey,
+      onSubmit: (request) async {
+        submittedRequest = request;
+      },
+    );
+
+    await inputBarKey.currentState!.prefillFromRecord(_webpRecord);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('submit-generation-button')));
+    await tester.pump();
+
+    expect(submittedRequest, isNotNull);
+    expect(submittedRequest!.prompt, '湖边木屋');
+    expect(submittedRequest!.sizePreset, SizePreset.wide2k);
+    expect(submittedRequest!.customWidth, 2560);
+    expect(submittedRequest!.customHeight, 1440);
+    expect(submittedRequest!.quality, ImageQuality.medium);
+    expect(submittedRequest!.outputFormat, ImageOutputFormat.webp);
+  });
 }
 
 Future<void> _pumpInputBar(
   WidgetTester tester, {
   PromptOptimizationApi? promptOptimizationApi,
+  SettingsModel settings = _settings,
+  GlobalKey<BottomInputBarState>? inputBarKey,
+  Future<void> Function(GenerationRequest request)? onSubmit,
 }) async {
   SharedPreferences.setMockInitialValues(const {});
   final preferences = await SharedPreferences.getInstance();
@@ -79,7 +145,7 @@ Future<void> _pumpInputBar(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(preferences),
-        initialSettingsModelProvider.overrideWithValue(_settings),
+        initialSettingsModelProvider.overrideWithValue(settings),
         promptOptimizationApiProvider.overrideWithValue(
           promptOptimizationApi ?? const PromptOptimizationApi(),
         ),
@@ -90,7 +156,10 @@ Future<void> _pumpInputBar(
             alignment: Alignment.bottomCenter,
             child: SizedBox(
               width: 420,
-              child: BottomInputBar(onSubmit: (request) async {}),
+              child: BottomInputBar(
+                key: inputBarKey,
+                onSubmit: onSubmit ?? (request) async {},
+              ),
             ),
           ),
         ),
@@ -122,6 +191,29 @@ const _settings = SettingsModel(
   activeProfileId: 'api',
   promptOptimizationProfiles: [_promptOptimizationProfile],
   activePromptOptimizationProfileId: 'optimizer',
+);
+
+final _webpRecord = ImageRecord(
+  id: 'record-webp',
+  prompt: '湖边木屋',
+  apiProfileId: 'api',
+  sourceImagePath: null,
+  sourceImagePaths: const [],
+  resultImagePath: null,
+  resultImageUrl: null,
+  resultB64: null,
+  width: 2560,
+  height: 1440,
+  quality: 'medium',
+  outputFormat: 'webp',
+  model: 'gpt-image-2',
+  status: ImageRecordStatus.done,
+  errorMessage: null,
+  rawApiResponseValue: null,
+  createdAt: DateTime(2026, 5, 30, 12),
+  durationMs: 1200,
+  usedSingleImageFallback: false,
+  isFavorite: false,
 );
 
 class _BlockingPromptOptimizationApi extends PromptOptimizationApi {

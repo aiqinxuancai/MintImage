@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -57,6 +58,17 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   int get attachmentCount => _attachments.length;
 
   @override
+  void initState() {
+    super.initState();
+    final settings = ref.read(settingsProvider);
+    _sizePreset = settings.lastSizePreset;
+    _customWidth = settings.lastCustomWidth;
+    _customHeight = settings.lastCustomHeight;
+    _quality = settings.lastQuality;
+    _outputFormat = settings.lastOutputFormat;
+  }
+
+  @override
   void dispose() {
     _optimizationCancelToken?.cancel();
     _promptController.dispose();
@@ -77,6 +89,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
   Future<void> prefillFromRecord(ImageRecord record) async {
     prefillPrompt(record.prompt);
+    _applyGenerationOptionsFromRecord(record);
     await _prefillAttachments(record.sourceAttachmentPaths);
   }
 
@@ -86,12 +99,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
       return;
     }
 
-    setState(() {
-      _sizePreset = _matchingSizePreset(record.width, record.height);
-      _customWidth = record.width;
-      _customHeight = record.height;
-      _count = 1;
-    });
+    _applyGenerationOptionsFromRecord(record);
 
     await _prefillAttachments(
       record.resultImagePath == null
@@ -175,6 +183,36 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
           preset.width == width &&
           preset.height == height,
       orElse: () => SizePreset.custom,
+    );
+  }
+
+  void _applyGenerationOptionsFromRecord(ImageRecord record) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _sizePreset = _matchingSizePreset(record.width, record.height);
+      _customWidth = record.width;
+      _customHeight = record.height;
+      _quality = ImageQuality.fromApiValue(record.quality);
+      _outputFormat = ImageOutputFormat.fromApiValue(record.outputFormat);
+      _count = 1;
+    });
+    _persistLastGenerationOptions();
+  }
+
+  void _persistLastGenerationOptions() {
+    unawaited(
+      ref
+          .read(settingsProvider.notifier)
+          .updateLastGenerationOptions(
+            sizePreset: _sizePreset,
+            customWidth: _customWidth,
+            customHeight: _customHeight,
+            quality: _quality,
+            outputFormat: _outputFormat,
+          ),
     );
   }
 
@@ -347,6 +385,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                         _customWidth = width;
                                         _customHeight = height;
                                       });
+                                      _persistLastGenerationOptions();
                                     },
                                   ),
                                   const SizedBox(width: 6),
@@ -356,6 +395,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       setState(() {
                                         _quality = quality;
                                       });
+                                      _persistLastGenerationOptions();
                                     },
                                   ),
                                   const SizedBox(width: 6),
@@ -365,6 +405,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       setState(() {
                                         _outputFormat = format;
                                       });
+                                      _persistLastGenerationOptions();
                                     },
                                   ),
                                   const SizedBox(width: 6),

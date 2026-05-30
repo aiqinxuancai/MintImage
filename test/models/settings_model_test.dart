@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mint_image/core/models/generation_request.dart';
 import 'package:mint_image/core/models/settings_model.dart';
 
 void main() {
@@ -10,6 +11,11 @@ void main() {
       SettingsModel.defaultRequestTimeoutSeconds,
     );
     expect(settings.responseFormat, isNull);
+    expect(settings.lastSizePreset, SizePreset.auto);
+    expect(settings.lastCustomWidth, 0);
+    expect(settings.lastCustomHeight, 0);
+    expect(settings.lastQuality, ImageQuality.auto);
+    expect(settings.lastOutputFormat, ImageOutputFormat.png);
   });
 
   test('settings round-trip preserves request timeout', () {
@@ -25,6 +31,11 @@ void main() {
       requestTimeoutSeconds: 900,
       promptOptimizationProfiles: [optimizer],
       activePromptOptimizationProfileId: optimizer.id,
+      lastSizePreset: SizePreset.wide2k,
+      lastCustomWidth: 2560,
+      lastCustomHeight: 1440,
+      lastQuality: ImageQuality.high,
+      lastOutputFormat: ImageOutputFormat.webp,
     );
 
     final decoded = SettingsModel.decode(settings.encode());
@@ -36,6 +47,11 @@ void main() {
       decoded.activePromptOptimizationProfile?.protocol,
       PromptOptimizationProtocol.openAiResponses,
     );
+    expect(decoded.lastSizePreset, SizePreset.wide2k);
+    expect(decoded.lastCustomWidth, 2560);
+    expect(decoded.lastCustomHeight, 1440);
+    expect(decoded.lastQuality, ImageQuality.high);
+    expect(decoded.lastOutputFormat, ImageOutputFormat.webp);
   });
 
   test('legacy settings default to no prompt optimization profiles', () {
@@ -56,6 +72,9 @@ void main() {
     expect(decoded.promptOptimizationProfiles, isEmpty);
     expect(decoded.activePromptOptimizationProfile, isNull);
     expect(decoded.activeProfile.apiMode, ImageGenerationApiMode.images);
+    expect(decoded.lastSizePreset, SizePreset.auto);
+    expect(decoded.lastQuality, ImageQuality.auto);
+    expect(decoded.lastOutputFormat, ImageOutputFormat.png);
   });
 
   test('image API mode is persisted per profile', () {

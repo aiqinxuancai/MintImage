@@ -11,6 +11,7 @@ class ImageListWidget extends ConsumerStatefulWidget {
     super.key,
     required this.onReusePrompt,
     required this.onReuseEdit,
+    required this.onRegenerateRecord,
     required this.onRetryRecord,
     required this.onCancelRecord,
     required this.onDeleteRecord,
@@ -28,6 +29,7 @@ class ImageListWidget extends ConsumerStatefulWidget {
 
   final ValueChanged<ImageRecord> onReusePrompt;
   final ValueChanged<ImageRecord> onReuseEdit;
+  final ValueChanged<ImageRecord> onRegenerateRecord;
   final ValueChanged<ImageRecord> onRetryRecord;
   final ValueChanged<String> onCancelRecord;
   final ValueChanged<ImageRecord> onDeleteRecord;
@@ -140,6 +142,7 @@ class _ImageListWidgetState extends ConsumerState<ImageListWidget> {
                 imageHeight: metrics.imageHeight,
                 onReusePrompt: () => widget.onReusePrompt(record),
                 onReuseEdit: () => widget.onReuseEdit(record),
+                onRegenerate: () => widget.onRegenerateRecord(record),
                 onRetry: () => widget.onRetryRecord(record),
                 onCancel: () => widget.onCancelRecord(record.id),
                 onDelete: () => widget.onDeleteRecord(record),

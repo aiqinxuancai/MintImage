@@ -33,6 +33,8 @@ class ImageRecordsTable extends Table {
 
   TextColumn get quality => text()();
 
+  TextColumn get outputFormat => text().withDefault(const Constant('png'))();
+
   TextColumn get model => text()();
 
   TextColumn get status => text()();
@@ -121,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,8 +165,33 @@ class AppDatabase extends _$AppDatabase {
         await _createTableIfMissing(migrator, favoriteFoldersTable);
         await _createTableIfMissing(migrator, favoriteFolderItemsTable);
       }
+      if (from < 7) {
+        await _addColumnIfMissing(
+          migrator,
+          imageRecordsTable,
+          imageRecordsTable.outputFormat,
+        );
+        await _backfillOutputFormat();
+      }
     },
   );
+
+  Future<void> _backfillOutputFormat() async {
+    await customStatement('''
+      UPDATE image_records_table
+      SET output_format = CASE
+        WHEN lower(coalesce(result_image_path, '') || ' ' || coalesce(result_image_url, '')) LIKE '%.webp%'
+          THEN 'webp'
+        WHEN lower(coalesce(result_image_path, '') || ' ' || coalesce(result_image_url, '')) LIKE '%.jpg%'
+          OR lower(coalesce(result_image_path, '') || ' ' || coalesce(result_image_url, '')) LIKE '%.jpeg%'
+          THEN 'jpeg'
+        ELSE 'png'
+      END
+      WHERE output_format IS NULL
+        OR output_format = ''
+        OR output_format = 'png'
+    ''');
+  }
 
   Future<void> _addColumnIfMissing(
     Migrator migrator,

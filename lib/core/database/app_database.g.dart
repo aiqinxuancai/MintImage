@@ -123,6 +123,18 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _outputFormatMeta = const VerificationMeta(
+    'outputFormat',
+  );
+  @override
+  late final GeneratedColumn<String> outputFormat = GeneratedColumn<String>(
+    'output_format',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('png'),
+  );
   static const VerificationMeta _modelMeta = const VerificationMeta('model');
   @override
   late final GeneratedColumn<String> model = GeneratedColumn<String>(
@@ -228,6 +240,7 @@ class $ImageRecordsTableTable extends ImageRecordsTable
     width,
     height,
     quality,
+    outputFormat,
     model,
     status,
     errorMessage,
@@ -336,6 +349,15 @@ class $ImageRecordsTableTable extends ImageRecordsTable
       );
     } else if (isInserting) {
       context.missing(_qualityMeta);
+    }
+    if (data.containsKey('output_format')) {
+      context.handle(
+        _outputFormatMeta,
+        outputFormat.isAcceptableOrUnknown(
+          data['output_format']!,
+          _outputFormatMeta,
+        ),
+      );
     }
     if (data.containsKey('model')) {
       context.handle(
@@ -453,6 +475,10 @@ class $ImageRecordsTableTable extends ImageRecordsTable
         DriftSqlType.string,
         data['${effectivePrefix}quality'],
       )!,
+      outputFormat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}output_format'],
+      )!,
       model: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}model'],
@@ -507,6 +533,7 @@ class ImageRecordsTableData extends DataClass
   final int width;
   final int height;
   final String quality;
+  final String outputFormat;
   final String model;
   final String status;
   final String? errorMessage;
@@ -527,6 +554,7 @@ class ImageRecordsTableData extends DataClass
     required this.width,
     required this.height,
     required this.quality,
+    required this.outputFormat,
     required this.model,
     required this.status,
     this.errorMessage,
@@ -560,6 +588,7 @@ class ImageRecordsTableData extends DataClass
     map['width'] = Variable<int>(width);
     map['height'] = Variable<int>(height);
     map['quality'] = Variable<String>(quality);
+    map['output_format'] = Variable<String>(outputFormat);
     map['model'] = Variable<String>(model);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || errorMessage != null) {
@@ -600,6 +629,7 @@ class ImageRecordsTableData extends DataClass
       width: Value(width),
       height: Value(height),
       quality: Value(quality),
+      outputFormat: Value(outputFormat),
       model: Value(model),
       status: Value(status),
       errorMessage: errorMessage == null && nullToAbsent
@@ -634,6 +664,7 @@ class ImageRecordsTableData extends DataClass
       width: serializer.fromJson<int>(json['width']),
       height: serializer.fromJson<int>(json['height']),
       quality: serializer.fromJson<String>(json['quality']),
+      outputFormat: serializer.fromJson<String>(json['outputFormat']),
       model: serializer.fromJson<String>(json['model']),
       status: serializer.fromJson<String>(json['status']),
       errorMessage: serializer.fromJson<String?>(json['errorMessage']),
@@ -663,6 +694,7 @@ class ImageRecordsTableData extends DataClass
       'width': serializer.toJson<int>(width),
       'height': serializer.toJson<int>(height),
       'quality': serializer.toJson<String>(quality),
+      'outputFormat': serializer.toJson<String>(outputFormat),
       'model': serializer.toJson<String>(model),
       'status': serializer.toJson<String>(status),
       'errorMessage': serializer.toJson<String?>(errorMessage),
@@ -688,6 +720,7 @@ class ImageRecordsTableData extends DataClass
     int? width,
     int? height,
     String? quality,
+    String? outputFormat,
     String? model,
     String? status,
     Value<String?> errorMessage = const Value.absent(),
@@ -716,6 +749,7 @@ class ImageRecordsTableData extends DataClass
     width: width ?? this.width,
     height: height ?? this.height,
     quality: quality ?? this.quality,
+    outputFormat: outputFormat ?? this.outputFormat,
     model: model ?? this.model,
     status: status ?? this.status,
     errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
@@ -751,6 +785,9 @@ class ImageRecordsTableData extends DataClass
       width: data.width.present ? data.width.value : this.width,
       height: data.height.present ? data.height.value : this.height,
       quality: data.quality.present ? data.quality.value : this.quality,
+      outputFormat: data.outputFormat.present
+          ? data.outputFormat.value
+          : this.outputFormat,
       model: data.model.present ? data.model.value : this.model,
       status: data.status.present ? data.status.value : this.status,
       errorMessage: data.errorMessage.present
@@ -786,6 +823,7 @@ class ImageRecordsTableData extends DataClass
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('quality: $quality, ')
+          ..write('outputFormat: $outputFormat, ')
           ..write('model: $model, ')
           ..write('status: $status, ')
           ..write('errorMessage: $errorMessage, ')
@@ -811,6 +849,7 @@ class ImageRecordsTableData extends DataClass
     width,
     height,
     quality,
+    outputFormat,
     model,
     status,
     errorMessage,
@@ -835,6 +874,7 @@ class ImageRecordsTableData extends DataClass
           other.width == this.width &&
           other.height == this.height &&
           other.quality == this.quality &&
+          other.outputFormat == this.outputFormat &&
           other.model == this.model &&
           other.status == this.status &&
           other.errorMessage == this.errorMessage &&
@@ -858,6 +898,7 @@ class ImageRecordsTableCompanion
   final Value<int> width;
   final Value<int> height;
   final Value<String> quality;
+  final Value<String> outputFormat;
   final Value<String> model;
   final Value<String> status;
   final Value<String?> errorMessage;
@@ -879,6 +920,7 @@ class ImageRecordsTableCompanion
     this.width = const Value.absent(),
     this.height = const Value.absent(),
     this.quality = const Value.absent(),
+    this.outputFormat = const Value.absent(),
     this.model = const Value.absent(),
     this.status = const Value.absent(),
     this.errorMessage = const Value.absent(),
@@ -901,6 +943,7 @@ class ImageRecordsTableCompanion
     required int width,
     required int height,
     required String quality,
+    this.outputFormat = const Value.absent(),
     required String model,
     required String status,
     this.errorMessage = const Value.absent(),
@@ -930,6 +973,7 @@ class ImageRecordsTableCompanion
     Expression<int>? width,
     Expression<int>? height,
     Expression<String>? quality,
+    Expression<String>? outputFormat,
     Expression<String>? model,
     Expression<String>? status,
     Expression<String>? errorMessage,
@@ -952,6 +996,7 @@ class ImageRecordsTableCompanion
       if (width != null) 'width': width,
       if (height != null) 'height': height,
       if (quality != null) 'quality': quality,
+      if (outputFormat != null) 'output_format': outputFormat,
       if (model != null) 'model': model,
       if (status != null) 'status': status,
       if (errorMessage != null) 'error_message': errorMessage,
@@ -978,6 +1023,7 @@ class ImageRecordsTableCompanion
     Value<int>? width,
     Value<int>? height,
     Value<String>? quality,
+    Value<String>? outputFormat,
     Value<String>? model,
     Value<String>? status,
     Value<String?>? errorMessage,
@@ -1000,6 +1046,7 @@ class ImageRecordsTableCompanion
       width: width ?? this.width,
       height: height ?? this.height,
       quality: quality ?? this.quality,
+      outputFormat: outputFormat ?? this.outputFormat,
       model: model ?? this.model,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -1049,6 +1096,9 @@ class ImageRecordsTableCompanion
     if (quality.present) {
       map['quality'] = Variable<String>(quality.value);
     }
+    if (outputFormat.present) {
+      map['output_format'] = Variable<String>(outputFormat.value);
+    }
     if (model.present) {
       map['model'] = Variable<String>(model.value);
     }
@@ -1097,6 +1147,7 @@ class ImageRecordsTableCompanion
           ..write('width: $width, ')
           ..write('height: $height, ')
           ..write('quality: $quality, ')
+          ..write('outputFormat: $outputFormat, ')
           ..write('model: $model, ')
           ..write('status: $status, ')
           ..write('errorMessage: $errorMessage, ')
@@ -1767,6 +1818,7 @@ typedef $$ImageRecordsTableTableCreateCompanionBuilder =
       required int width,
       required int height,
       required String quality,
+      Value<String> outputFormat,
       required String model,
       required String status,
       Value<String?> errorMessage,
@@ -1790,6 +1842,7 @@ typedef $$ImageRecordsTableTableUpdateCompanionBuilder =
       Value<int> width,
       Value<int> height,
       Value<String> quality,
+      Value<String> outputFormat,
       Value<String> model,
       Value<String> status,
       Value<String?> errorMessage,
@@ -1904,6 +1957,11 @@ class $$ImageRecordsTableTableFilterComposer
 
   ColumnFilters<String> get quality => $composableBuilder(
     column: $table.quality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outputFormat => $composableBuilder(
+    column: $table.outputFormat,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2039,6 +2097,11 @@ class $$ImageRecordsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get outputFormat => $composableBuilder(
+    column: $table.outputFormat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get model => $composableBuilder(
     column: $table.model,
     builder: (column) => ColumnOrderings(column),
@@ -2131,6 +2194,11 @@ class $$ImageRecordsTableTableAnnotationComposer
 
   GeneratedColumn<String> get quality =>
       $composableBuilder(column: $table.quality, builder: (column) => column);
+
+  GeneratedColumn<String> get outputFormat => $composableBuilder(
+    column: $table.outputFormat,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get model =>
       $composableBuilder(column: $table.model, builder: (column) => column);
@@ -2238,6 +2306,7 @@ class $$ImageRecordsTableTableTableManager
                 Value<int> width = const Value.absent(),
                 Value<int> height = const Value.absent(),
                 Value<String> quality = const Value.absent(),
+                Value<String> outputFormat = const Value.absent(),
                 Value<String> model = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
@@ -2259,6 +2328,7 @@ class $$ImageRecordsTableTableTableManager
                 width: width,
                 height: height,
                 quality: quality,
+                outputFormat: outputFormat,
                 model: model,
                 status: status,
                 errorMessage: errorMessage,
@@ -2282,6 +2352,7 @@ class $$ImageRecordsTableTableTableManager
                 required int width,
                 required int height,
                 required String quality,
+                Value<String> outputFormat = const Value.absent(),
                 required String model,
                 required String status,
                 Value<String?> errorMessage = const Value.absent(),
@@ -2303,6 +2374,7 @@ class $$ImageRecordsTableTableTableManager
                 width: width,
                 height: height,
                 quality: quality,
+                outputFormat: outputFormat,
                 model: model,
                 status: status,
                 errorMessage: errorMessage,

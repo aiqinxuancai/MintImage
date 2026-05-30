@@ -39,6 +39,7 @@ void main() {
     );
 
     expect(record.isFavorite, isFalse);
+    expect(record.outputFormat, 'png');
     expect(favorited.isFavorite, isTrue);
     expect(autoFavorited.isFavorite, isTrue);
   });
@@ -56,6 +57,7 @@ void main() {
       width: 1024,
       height: 1024,
       quality: 'medium',
+      outputFormat: 'webp',
       model: 'gpt-image-2',
       status: ImageRecordStatus.loading,
       errorMessage: 'temporary',
@@ -73,6 +75,7 @@ void main() {
     expect(cancelled.resultImagePath, isNull);
     expect(cancelled.resultImageUrl, isNull);
     expect(cancelled.resultB64, isNull);
+    expect(cancelled.outputFormat, 'webp');
     expect(cancelled.rawApiResponseValue, isNull);
     expect(cancelled.usedSingleImageFallback, isFalse);
     expect(cancelled.sourceImagePath, 'source.png');
@@ -94,6 +97,7 @@ void main() {
       width: 1024,
       height: 1024,
       quality: 'low',
+      outputFormat: 'png',
       model: 'gpt-image-2',
       status: ImageRecordStatus.loading,
       errorMessage: null,
@@ -115,6 +119,7 @@ void main() {
       width: 1024,
       height: 1024,
       quality: 'low',
+      outputFormat: 'jpeg',
       model: 'gpt-image-2',
       status: ImageRecordStatus.done,
       errorMessage: null,

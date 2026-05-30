@@ -25,9 +25,37 @@ void main() {
     expect(find.text('失败原因'), findsOneWidget);
     expect(find.text('接口返回 429：额度不足'), findsOneWidget);
   });
+
+  testWidgets('shows regenerate action for completed records', (tester) async {
+    var regenerated = false;
+    await _pumpImageCell(
+      tester,
+      _record.copyWith(
+        status: ImageRecordStatus.done,
+        errorMessage: null,
+        clearErrorMessage: true,
+      ),
+      onRegenerate: () {
+        regenerated = true;
+      },
+    );
+
+    await tester.longPress(find.byType(ImageCell));
+    await tester.pumpAndSettle();
+
+    expect(find.text('再生成一张'), findsOneWidget);
+    await tester.tap(find.text('再生成一张'));
+    await tester.pumpAndSettle();
+
+    expect(regenerated, isTrue);
+  });
 }
 
-Future<void> _pumpImageCell(WidgetTester tester, ImageRecord record) async {
+Future<void> _pumpImageCell(
+  WidgetTester tester,
+  ImageRecord record, {
+  VoidCallback? onRegenerate,
+}) async {
   SharedPreferences.setMockInitialValues(const {});
   final preferences = await SharedPreferences.getInstance();
 
@@ -48,6 +76,7 @@ Future<void> _pumpImageCell(WidgetTester tester, ImageRecord record) async {
                 imageHeight: 180,
                 onReusePrompt: () {},
                 onReuseEdit: () {},
+                onRegenerate: onRegenerate ?? () {},
                 onRetry: () {},
                 onCancel: () {},
                 onDelete: () {},
@@ -92,6 +121,7 @@ final _record = ImageRecord(
   width: 1024,
   height: 1024,
   quality: 'medium',
+  outputFormat: 'png',
   model: 'gpt-image-2',
   status: ImageRecordStatus.error,
   errorMessage: null,

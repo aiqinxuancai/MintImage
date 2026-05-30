@@ -18,6 +18,7 @@ class ImageCell extends ConsumerWidget {
     required this.imageHeight,
     required this.onReusePrompt,
     required this.onReuseEdit,
+    required this.onRegenerate,
     required this.onRetry,
     required this.onCancel,
     required this.onDelete,
@@ -33,6 +34,7 @@ class ImageCell extends ConsumerWidget {
   final double imageHeight;
   final VoidCallback onReusePrompt;
   final VoidCallback onReuseEdit;
+  final VoidCallback onRegenerate;
   final VoidCallback onRetry;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
@@ -290,6 +292,15 @@ class ImageCell extends ConsumerWidget {
                   onReusePrompt();
                 },
               ),
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.refresh_rounded),
+                  title: const Text('再生成一张'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    onRegenerate();
+                  },
+                ),
               if (canEdit)
                 ListTile(
                   leading: const Icon(Icons.edit_rounded),

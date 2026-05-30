@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
+import 'generation_request.dart';
+
 const _uuid = Uuid();
 
 enum ImageGenerationApiMode {
@@ -251,6 +253,11 @@ class SettingsModel {
     this.activePromptOptimizationProfileId,
     this.responseFormat,
     this.requestTimeoutSeconds = defaultRequestTimeoutSeconds,
+    this.lastSizePreset = SizePreset.auto,
+    this.lastCustomWidth = 0,
+    this.lastCustomHeight = 0,
+    this.lastQuality = ImageQuality.auto,
+    this.lastOutputFormat = ImageOutputFormat.png,
   });
 
   factory SettingsModel.initial() {
@@ -262,6 +269,11 @@ class SettingsModel {
       activePromptOptimizationProfileId: null,
       responseFormat: null,
       requestTimeoutSeconds: defaultRequestTimeoutSeconds,
+      lastSizePreset: SizePreset.auto,
+      lastCustomWidth: 0,
+      lastCustomHeight: 0,
+      lastQuality: ImageQuality.auto,
+      lastOutputFormat: ImageOutputFormat.png,
     );
   }
 
@@ -301,6 +313,7 @@ class SettingsModel {
         : promptOptimizationProfiles.isEmpty
         ? null
         : promptOptimizationProfiles.first.id;
+    final lastSizePreset = _normalizeSizePreset(json['lastSizePreset']);
 
     return SettingsModel(
       profiles: profiles,
@@ -312,6 +325,17 @@ class SettingsModel {
       requestTimeoutSeconds: _normalizeRequestTimeoutSeconds(
         json['requestTimeoutSeconds'],
       ),
+      lastSizePreset: lastSizePreset,
+      lastCustomWidth: _normalizeDimension(
+        json['lastCustomWidth'],
+        fallback: _fallbackWidthForPreset(lastSizePreset),
+      ),
+      lastCustomHeight: _normalizeDimension(
+        json['lastCustomHeight'],
+        fallback: _fallbackHeightForPreset(lastSizePreset),
+      ),
+      lastQuality: _normalizeImageQuality(json['lastQuality']),
+      lastOutputFormat: _normalizeImageOutputFormat(json['lastOutputFormat']),
     );
   }
 
@@ -321,6 +345,11 @@ class SettingsModel {
   final String? activePromptOptimizationProfileId;
   final String? responseFormat;
   final int requestTimeoutSeconds;
+  final SizePreset lastSizePreset;
+  final int lastCustomWidth;
+  final int lastCustomHeight;
+  final ImageQuality lastQuality;
+  final ImageOutputFormat lastOutputFormat;
 
   ApiProfile get activeProfile {
     return profiles.firstWhere(
@@ -375,6 +404,11 @@ class SettingsModel {
     String? responseFormat,
     bool clearResponseFormat = false,
     int? requestTimeoutSeconds,
+    SizePreset? lastSizePreset,
+    int? lastCustomWidth,
+    int? lastCustomHeight,
+    ImageQuality? lastQuality,
+    ImageOutputFormat? lastOutputFormat,
   }) {
     return SettingsModel(
       profiles: profiles ?? this.profiles,
@@ -390,6 +424,11 @@ class SettingsModel {
           : responseFormat ?? this.responseFormat,
       requestTimeoutSeconds:
           requestTimeoutSeconds ?? this.requestTimeoutSeconds,
+      lastSizePreset: lastSizePreset ?? this.lastSizePreset,
+      lastCustomWidth: lastCustomWidth ?? this.lastCustomWidth,
+      lastCustomHeight: lastCustomHeight ?? this.lastCustomHeight,
+      lastQuality: lastQuality ?? this.lastQuality,
+      lastOutputFormat: lastOutputFormat ?? this.lastOutputFormat,
     );
   }
 
@@ -403,6 +442,11 @@ class SettingsModel {
       'activePromptOptimizationProfileId': activePromptOptimizationProfileId,
       'responseFormat': responseFormat,
       'requestTimeoutSeconds': requestTimeoutSeconds,
+      'lastSizePreset': lastSizePreset.storageKey,
+      'lastCustomWidth': lastCustomWidth,
+      'lastCustomHeight': lastCustomHeight,
+      'lastQuality': lastQuality.apiValue,
+      'lastOutputFormat': lastOutputFormat.apiValue,
     };
   }
 
@@ -444,5 +488,60 @@ class SettingsModel {
     }
 
     return value;
+  }
+
+  static SizePreset _normalizeSizePreset(Object? rawValue) {
+    final value = rawValue is String ? rawValue : '';
+    return SizePreset.values.firstWhere(
+      (preset) => preset.storageKey == value,
+      orElse: () => SizePreset.auto,
+    );
+  }
+
+  static int _normalizeDimension(Object? rawValue, {required int fallback}) {
+    final parsed = switch (rawValue) {
+      int value => value,
+      num value => value.toInt(),
+      String value => int.tryParse(value),
+      _ => null,
+    };
+
+    if (parsed == null || parsed < 0) {
+      return fallback;
+    }
+
+    return parsed;
+  }
+
+  static ImageQuality _normalizeImageQuality(Object? rawValue) {
+    final value = rawValue is String ? rawValue : '';
+    return ImageQuality.values.firstWhere(
+      (quality) => quality.apiValue == value,
+      orElse: () => ImageQuality.auto,
+    );
+  }
+
+  static ImageOutputFormat _normalizeImageOutputFormat(Object? rawValue) {
+    final value = rawValue is String ? rawValue : '';
+    return ImageOutputFormat.values.firstWhere(
+      (format) => format.apiValue == value,
+      orElse: () => ImageOutputFormat.png,
+    );
+  }
+
+  static int _fallbackWidthForPreset(SizePreset preset) {
+    return switch (preset) {
+      SizePreset.auto => 0,
+      SizePreset.custom => 1024,
+      _ => preset.width,
+    };
+  }
+
+  static int _fallbackHeightForPreset(SizePreset preset) {
+    return switch (preset) {
+      SizePreset.auto => 0,
+      SizePreset.custom => 1024,
+      _ => preset.height,
+    };
   }
 }

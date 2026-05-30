@@ -103,18 +103,28 @@ class GenerationController extends StateNotifier<GenerationState> {
   }
 
   Future<void> retryRecord(ImageRecord record) async {
+    await _submitFromRecord(record);
+  }
+
+  Future<void> regenerateRecord(ImageRecord record) async {
+    await _submitFromRecord(record);
+  }
+
+  Future<void> _submitFromRecord(ImageRecord record) async {
     final apiProfileId = record.apiProfileId.isNotEmpty
         ? record.apiProfileId
         : _ref.read(settingsProvider).activeProfileId;
+    final isAutoSize = record.width == 0 || record.height == 0;
 
     await submit(
       GenerationRequest(
         prompt: record.prompt,
         imagePaths: record.sourceAttachmentPaths,
-        sizePreset: SizePreset.custom,
+        sizePreset: isAutoSize ? SizePreset.auto : SizePreset.custom,
         customWidth: record.width,
         customHeight: record.height,
         quality: ImageQuality.fromApiValue(record.quality),
+        outputFormat: ImageOutputFormat.fromApiValue(record.outputFormat),
         count: 1,
         apiProfileId: apiProfileId,
       ),

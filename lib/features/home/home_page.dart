@@ -236,6 +236,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             onReuseEdit: (record) {
                               _inputBarKey.currentState?.prefillForEdit(record);
                             },
+                            onRegenerateRecord: _regenerateRecord,
                             onRetryRecord: _retryRecord,
                             onCancelRecord: _cancelRecord,
                             onDeleteRecord: _deleteRecord,
@@ -295,6 +296,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _retryRecord(ImageRecord record) async {
     await ref.read(generationProvider.notifier).retryRecord(record);
+  }
+
+  Future<void> _regenerateRecord(ImageRecord record) async {
+    await ref.read(generationProvider.notifier).regenerateRecord(record);
   }
 
   void _cancelRecord(String recordId) {
