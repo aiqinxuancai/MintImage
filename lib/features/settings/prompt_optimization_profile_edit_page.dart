@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 
+import '../../core/api/openai_client.dart';
+import '../../core/api/prompt_optimization_api.dart';
 import '../../core/models/settings_model.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../shared/theme.dart';
 
@@ -23,6 +27,8 @@ class _PromptOptimizationProfileEditPageState
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
   bool _obscureApiKey = true;
+  bool _testingConnection = false;
+  CancelToken? _testCancelToken;
   late PromptOptimizationProtocol _protocol;
 
   PromptOptimizationProfile? get _editingProfile => widget.profile;
@@ -47,6 +53,7 @@ class _PromptOptimizationProfileEditPageState
 
   @override
   void dispose() {
+    _testCancelToken?.cancel();
     _baseUrlController.removeListener(_refresh);
     _modelController.removeListener(_refresh);
     _nameController.dispose();
@@ -196,6 +203,17 @@ class _PromptOptimizationProfileEditPageState
               ),
               const SizedBox(height: 16),
               ElevatedButton(onPressed: _save, child: const Text('保存')),
+              const SizedBox(height: 10),
+              FilledButton.tonalIcon(
+                onPressed: _testingConnection ? null : _testConnection,
+                icon: _testingConnection
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.network_check_rounded),
+                label: Text(_testingConnection ? '测试中...' : '测试连通性'),
+              ),
             ],
           ),
         ),
@@ -281,9 +299,89 @@ class _PromptOptimizationProfileEditPageState
     Navigator.of(context).pop();
   }
 
+  Future<void> _testConnection() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showMessage('请输入 API Key 后再测试。');
+      return;
+    }
+
+    final profile = PromptOptimizationProfile(
+      id: _editingProfile?.id ?? 'connection-test',
+      name: _nameController.text.trim(),
+      baseUrl: _baseUrlController.text.trim(),
+      apiKey: apiKey,
+      model: _modelController.text.trim(),
+      protocol: _protocol,
+    );
+    final cancelToken = CancelToken();
+    _testCancelToken = cancelToken;
+    setState(() {
+      _testingConnection = true;
+    });
+
+    try {
+      final result = await ref
+          .read(promptOptimizationApiProvider)
+          .optimize(
+            prompt: '一只白猫坐在雨后的窗边',
+            direction: PromptOptimizationDirection.strengthen,
+            profile: profile,
+            timeoutSeconds: ref.read(settingsProvider).requestTimeoutSeconds,
+            cancelToken: cancelToken,
+          );
+      if (!mounted || cancelToken.isCancelled) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('连通性测试成功'),
+            content: Text(result, maxLines: 8, overflow: TextOverflow.ellipsis),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('知道了'),
+              ),
+            ],
+          );
+        },
+      );
+    } on ApiException catch (error) {
+      if (!mounted || cancelToken.isCancelled) {
+        return;
+      }
+      _showMessage('连通性测试失败：${error.message}');
+    } catch (error) {
+      if (!mounted || cancelToken.isCancelled) {
+        return;
+      }
+      _showMessage('连通性测试失败：$error');
+    } finally {
+      if (mounted && identical(_testCancelToken, cancelToken)) {
+        setState(() {
+          _testingConnection = false;
+          _testCancelToken = null;
+        });
+      }
+    }
+  }
+
   void _refresh() {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

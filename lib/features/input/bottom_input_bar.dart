@@ -20,6 +20,10 @@ import 'image_format_selector.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
 import 'size_selector.dart';
+import '../settings/prompt_optimization_profile_edit_page.dart';
+
+const double _primaryInputHeight = 40;
+const double _promptOptimizeButtonSize = 28;
 
 class BottomInputBar extends ConsumerStatefulWidget {
   const BottomInputBar({
@@ -179,27 +183,25 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     final settings = ref.watch(settingsProvider);
     final activeProfile = settings.activeProfile;
     final hasApiKey = activeProfile.apiKey.trim().isNotEmpty;
-    final hasPromptOptimizationProfile =
-        settings.activePromptOptimizationProfile != null;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final theme = Theme.of(context);
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
-      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomInset),
+      padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + bottomInset),
       child: SafeArea(
         top: false,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(22),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Material(
               color: Colors.transparent,
               child: DecoratedBox(
-                decoration: AppDecorations.glass(radius: 28),
+                decoration: AppDecorations.glass(radius: 22),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -214,37 +216,110 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                           },
                         ),
                       ],
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Focus(
-                              onKeyEvent: _handleKeyEvent,
-                              child: TextField(
-                                key: const Key('prompt-input'),
-                                controller: _promptController,
-                                focusNode: _promptFocusNode,
-                                readOnly: _optimizingPrompt,
-                                minLines: 1,
-                                maxLines: 4,
-                                textInputAction: TextInputAction.newline,
-                                keyboardType: TextInputType.multiline,
-                                decoration: InputDecoration(
-                                  hintText: _attachments.isEmpty
-                                      ? '描述你想生成的画面'
-                                      : '描述你想如何修改这些图片',
+                            child: AnimatedBuilder(
+                              animation: _promptFocusNode,
+                              builder: (context, child) {
+                                final focused = _promptFocusNode.hasFocus;
+                                return DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: focused
+                                          ? AppThemeTokens.primary
+                                          : AppThemeTokens.border,
+                                      width: focused ? 1.4 : 1,
+                                    ),
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: _primaryInputHeight,
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.bottomLeft,
+                                  children: [
+                                    Focus(
+                                      onKeyEvent: _handleKeyEvent,
+                                      child: TextField(
+                                        key: const Key('prompt-input'),
+                                        controller: _promptController,
+                                        focusNode: _promptFocusNode,
+                                        readOnly: _optimizingPrompt,
+                                        minLines: 1,
+                                        maxLines: 4,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: AppThemeTokens.textPrimary,
+                                              fontSize: 13,
+                                              height: 1.25,
+                                            ),
+                                        textAlignVertical:
+                                            TextAlignVertical.center,
+                                        textInputAction:
+                                            TextInputAction.newline,
+                                        keyboardType: TextInputType.multiline,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          filled: false,
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          disabledBorder: InputBorder.none,
+                                          errorBorder: InputBorder.none,
+                                          focusedErrorBorder: InputBorder.none,
+                                          constraints: const BoxConstraints(
+                                            minHeight: _primaryInputHeight,
+                                          ),
+                                          hintText: _attachments.isEmpty
+                                              ? '描述你想生成的画面'
+                                              : '描述你想如何修改这些图片',
+                                          hintStyle: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: AppThemeTokens
+                                                    .textSecondary
+                                                    .withValues(alpha: 0.82),
+                                                fontSize: 13,
+                                                height: 1.25,
+                                              ),
+                                          contentPadding:
+                                              const EdgeInsets.fromLTRB(
+                                                12,
+                                                15,
+                                                38,
+                                                7,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 5,
+                                      bottom: 0,
+                                      height: _primaryInputHeight,
+                                      child: Center(
+                                        child: _PromptOptimizeButton(
+                                          key: const Key(
+                                            'prompt-optimize-button',
+                                          ),
+                                          enabled: true,
+                                          loading: _optimizingPrompt,
+                                          onTap: _handlePromptOptimizationTap,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _PromptOptimizeButton(
-                            enabled: hasPromptOptimizationProfile,
-                            loading: _optimizingPrompt,
-                            onTap: _handlePromptOptimizationTap,
-                          ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 7),
                           _SendButton(
                             key: const Key('submit-generation-button'),
                             enabled: hasApiKey && !_optimizingPrompt,
@@ -252,7 +327,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           Expanded(
@@ -274,7 +349,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       });
                                     },
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 6),
                                   QualitySelector(
                                     selectedQuality: _quality,
                                     onSelected: (quality) {
@@ -283,7 +358,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       });
                                     },
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 6),
                                   ImageFormatSelector(
                                     selectedFormat: _outputFormat,
                                     onSelected: (format) {
@@ -292,7 +367,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       });
                                     },
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 6),
                                   QuantitySelector(
                                     count: _count,
                                     onSelected: (count) {
@@ -305,10 +380,10 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           SizedBox(
-                            width: 36,
-                            height: 36,
+                            width: 32,
+                            height: 32,
                             child: IconButton(
                               tooltip: '添加图片',
                               onPressed: _submitting || _optimizingPrompt
@@ -316,13 +391,13 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                   : _pickAttachments,
                               icon: const Icon(
                                 Icons.attach_file_rounded,
-                                size: 20,
+                                size: 18,
                               ),
                               padding: EdgeInsets.zero,
                               style: IconButton.styleFrom(
                                 backgroundColor: AppThemeTokens.surfaceSoft,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
                             ),
@@ -330,7 +405,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                         ],
                       ),
                       if (!hasApiKey) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           '当前配置缺少 API Key，发送按钮已禁用。',
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -479,7 +554,12 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
   Future<void> _handlePromptOptimizationTap() async {
     if (_optimizingPrompt) {
-      _optimizationCancelToken?.cancel('cancelled by user');
+      final cancelToken = _optimizationCancelToken;
+      cancelToken?.cancel('cancelled by user');
+      setState(() {
+        _optimizingPrompt = false;
+        _optimizationCancelToken = null;
+      });
       return;
     }
 
@@ -492,7 +572,11 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     final settings = ref.read(settingsProvider);
     final profile = settings.activePromptOptimizationProfile;
     if (profile == null) {
-      _showMessage('请先在设置中添加提示词优化 API。');
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PromptOptimizationProfileEditPage(),
+        ),
+      );
       return;
     }
 
@@ -518,77 +602,86 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
     return showModalBottomSheet<PromptOptimizationDirection>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '优化方向',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '优化方向',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                for (final direction in PromptOptimizationDirection.values)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.of(context).pop(direction),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 13,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppThemeTokens.surfaceSoft,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppThemeTokens.border),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.auto_awesome_rounded,
-                              size: 18,
-                              color: AppThemeTokens.primaryStrong,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    direction.label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: AppThemeTokens.textPrimary,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    direction.description,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: AppThemeTokens.textSecondary,
-                                        ),
-                                  ),
-                                ],
+                  const SizedBox(height: 8),
+                  for (final direction in PromptOptimizationDirection.values)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => Navigator.of(context).pop(direction),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 13,
+                            vertical: 11,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.surfaceSoft,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppThemeTokens.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 18,
+                                color: AppThemeTokens.primaryStrong,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      direction.label,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: AppThemeTokens.textPrimary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      direction.description,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppThemeTokens.textSecondary,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -662,6 +755,7 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
 class _PromptOptimizeButton extends StatefulWidget {
   const _PromptOptimizeButton({
+    super.key,
     required this.enabled,
     required this.loading,
     required this.onTap,
@@ -711,67 +805,67 @@ class _PromptOptimizeButtonState extends State<_PromptOptimizeButton>
   @override
   Widget build(BuildContext context) {
     final active = widget.enabled || widget.loading;
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 180),
-      opacity: active ? 1 : 0.56,
-      child: SizedBox(
-        width: 44,
-        height: 50,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: active ? widget.onTap : null,
-            borderRadius: BorderRadius.circular(17),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(17),
-                gradient: widget.loading
-                    ? null
-                    : const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFFFC857),
-                          Color(0xFFFF6B6B),
-                          Color(0xFF3B82F6),
-                        ],
-                      ),
-                color: widget.loading ? AppThemeTokens.surfaceSoft : null,
-                border: widget.loading
-                    ? Border.all(color: AppThemeTokens.border)
-                    : null,
+    const gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFFC857), Color(0xFFFF6B6B), Color(0xFF3B82F6)],
+    );
+    final iconWidget = ShaderMask(
+      shaderCallback: (bounds) => gradient.createShader(bounds),
+      child: const Icon(
+        Icons.auto_awesome_rounded,
+        color: Colors.white,
+        size: 20,
+      ),
+    );
+    final loadingWidget = SizedBox.square(
+      dimension: 22,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          RotationTransition(
+            turns: _controller,
+            child: SizedBox.square(
+              dimension: 22,
+              child: CircularProgressIndicator(
+                key: const Key('prompt-optimization-spinner'),
+                value: 0.72,
+                strokeWidth: 2.4,
+                strokeCap: StrokeCap.round,
+                backgroundColor: AppThemeTokens.primarySoft.withValues(
+                  alpha: 0.35,
+                ),
+                color: AppThemeTokens.primaryStrong,
               ),
-              child: Center(
-                child: widget.loading
-                    ? RotationTransition(
-                        turns: _controller,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const SizedBox.square(
-                              dimension: 27,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: AppThemeTokens.primaryStrong,
-                              ),
-                            ),
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: AppThemeTokens.primaryStrong,
-                                borderRadius: BorderRadius.circular(2.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Colors.white,
-                        size: 23,
-                      ),
-              ),
+            ),
+          ),
+          Container(
+            key: const Key('prompt-optimization-stop-square'),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: AppThemeTokens.primaryStrong,
+              borderRadius: BorderRadius.circular(1.8),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Tooltip(
+      message: widget.loading ? '停止优化' : '优化提示词',
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 180),
+        opacity: active ? 1 : 0.38,
+        child: SizedBox(
+          width: _promptOptimizeButtonSize,
+          height: _promptOptimizeButtonSize,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: active ? widget.onTap : null,
+              borderRadius: BorderRadius.circular(8),
+              child: Center(child: widget.loading ? loadingWidget : iconWidget),
             ),
           ),
         ),
@@ -798,18 +892,22 @@ class _SendButton extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: SizedBox(
-          width: 50,
-          height: 50,
+          width: _primaryInputHeight,
+          height: _primaryInputHeight,
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: enabled ? onTap : null,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(15),
               child: const Center(
-                child: Icon(Icons.arrow_upward_rounded, color: Colors.white),
+                child: Icon(
+                  Icons.arrow_upward_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
             ),
           ),
