@@ -17,6 +17,7 @@ import '../../core/providers/settings_provider.dart';
 import '../../core/services/attachment_picker_service.dart';
 import '../../shared/theme.dart';
 import 'attachment_preview_strip.dart';
+import 'api_profile_selector.dart';
 import 'image_format_selector.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
@@ -417,6 +418,18 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
                                       });
                                     },
                                   ),
+                                  if (_showsApiSourceSelector) ...[
+                                    const SizedBox(width: 6),
+                                    ApiProfileSelector(
+                                      profiles: settings.profiles,
+                                      activeProfileId: settings.activeProfileId,
+                                      onSelected: (profileId) async {
+                                        await ref
+                                            .read(settingsProvider.notifier)
+                                            .setActiveProfile(profileId);
+                                      },
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -493,6 +506,10 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
   bool get _isDesktopPlatform {
     return !kIsWeb &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+  }
+
+  bool get _showsApiSourceSelector {
+    return Platform.isWindows || Platform.isMacOS;
   }
 
   void _insertNewLine() {

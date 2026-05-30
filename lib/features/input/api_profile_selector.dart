@@ -22,34 +22,41 @@ class ApiProfileSelector extends StatelessWidget {
       orElse: () => profiles.first,
     );
 
-    return GestureDetector(
-      onTap: () => _showSheet(context),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 28),
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppThemeTokens.surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppThemeTokens.border.withValues(alpha: 0.7),
+    return Tooltip(
+      message: '切换生图 API',
+      child: GestureDetector(
+        onTap: () => _showSheet(context),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppThemeTokens.surfaceSoft,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppThemeTokens.border.withValues(alpha: 0.7),
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.hub_rounded, size: 13, color: AppThemeTokens.primaryStrong),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                activeProfile.name,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppThemeTokens.primaryStrong,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.hub_rounded,
+                size: 13,
+                color: AppThemeTokens.primaryStrong,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  activeProfile.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppThemeTokens.primaryStrong,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -75,9 +82,9 @@ class ApiProfileSelector extends StatelessWidget {
                   profile.normalizedBaseUrl,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
+                  style: Theme.of(
+                    ctx,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
                 onTap: () {
                   Navigator.of(ctx).pop();

@@ -12,6 +12,7 @@ import 'package:mint_image/core/models/generation_request.dart';
 import 'package:mint_image/core/models/image_record.dart';
 import 'package:mint_image/core/models/settings_model.dart';
 import 'package:mint_image/core/providers/app_providers.dart';
+import 'package:mint_image/core/providers/settings_provider.dart';
 import 'package:mint_image/features/input/bottom_input_bar.dart';
 
 void main() {
@@ -129,6 +130,26 @@ void main() {
     expect(submittedRequest!.quality, ImageQuality.medium);
     expect(submittedRequest!.outputFormat, ImageOutputFormat.webp);
   });
+
+  testWidgets('shows desktop api source switcher and can change profile', (
+    tester,
+  ) async {
+    await _pumpInputBar(tester, settings: _settingsWithTwoProfiles);
+
+    expect(find.byTooltip('切换生图 API'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('切换生图 API'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('备用'), findsOneWidget);
+    await tester.tap(find.text('备用'));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(BottomInputBar)),
+    );
+    expect(container.read(settingsProvider).activeProfileId, 'api-2');
+  });
 }
 
 Future<void> _pumpInputBar(
@@ -191,6 +212,21 @@ const _settings = SettingsModel(
   activeProfileId: 'api',
   promptOptimizationProfiles: [_promptOptimizationProfile],
   activePromptOptimizationProfileId: 'optimizer',
+);
+
+const _settingsWithTwoProfiles = SettingsModel(
+  profiles: [_apiProfile, _apiProfile2],
+  activeProfileId: 'api',
+  promptOptimizationProfiles: [_promptOptimizationProfile],
+  activePromptOptimizationProfileId: 'optimizer',
+);
+
+const _apiProfile2 = ApiProfile(
+  id: 'api-2',
+  name: '备用',
+  baseUrl: 'https://api.openai.com',
+  apiKey: 'test-key-2',
+  model: 'gpt-image-2',
 );
 
 final _webpRecord = ImageRecord(
