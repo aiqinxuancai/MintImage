@@ -63,6 +63,29 @@ class ImageEditApi {
       return parseResponsesImageResults(response);
     }
 
+    if (_isRightApiDraw(profile)) {
+      final body = <String, dynamic>{
+        'model': profile.model,
+        'prompt': request.prompt,
+        'n': 1,
+        'async': true,
+        'image': [
+          for (final path in request.imagePaths) await imagePathToDataUrl(path),
+        ],
+      };
+      if (_isGptImage25Family(profile.model)) {
+        body['imageSize'] = _rightApiImageSize(request);
+      } else if (request.apiSize != null) {
+        body['size'] = request.apiSize;
+      }
+      final submitted = await client.postJson(
+        '/v1/images/generations',
+        body,
+        cancelToken: cancelToken,
+      );
+      return _pollRightApi(client, submitted, timeoutSeconds, cancelToken);
+    }
+
     final formData = FormData();
 
     final fields = <MapEntry<String, String>>[
@@ -75,7 +98,9 @@ class ImageEditApi {
     if (request.apiSize != null) {
       fields.add(MapEntry('size', request.apiSize!));
     }
-    if (responseFormat != null && responseFormat.trim().isNotEmpty) {
+    if (responseFormat != null &&
+        responseFormat.trim().isNotEmpty &&
+        !_isGptImage2Family(profile.model)) {
       fields.add(MapEntry('response_format', responseFormat));
     }
     formData.fields.addAll(fields);
@@ -102,6 +127,63 @@ class ImageEditApi {
           );
 
     return _parseResults(response);
+  }
+
+  bool _isGptImage2Family(String model) {
+    final value = model.trim().toLowerCase();
+    return value == 'gpt-image-2' || value.startsWith('gpt-image-2.5-');
+  }
+
+  bool _isRightApiDraw(ApiProfile profile) {
+    final uri = Uri.tryParse(profile.normalizedBaseUrl);
+    return uri != null &&
+        uri.host.toLowerCase() == 'www.rightapi.ai' &&
+        uri.path.toLowerCase().endsWith('/draw');
+  }
+
+  bool _isGptImage25Family(String model) {
+    return model.trim().toLowerCase().startsWith('gpt-image-2.5-');
+  }
+
+  String _rightApiImageSize(GenerationRequest request) {
+    final longestEdge = request.resolvedWidth > request.resolvedHeight
+        ? request.resolvedWidth
+        : request.resolvedHeight;
+    if (longestEdge <= 1024) return '1K';
+    if (longestEdge <= 2048) return '2K';
+    return '4K';
+  }
+
+  Future<List<GenerationResult>> _pollRightApi(
+    OpenAiClient client,
+    Map<String, dynamic> submitted,
+    int timeoutSeconds,
+    CancelToken? cancelToken,
+  ) async {
+    final taskId = submitted['task_id'];
+    if (taskId is! String || taskId.trim().isEmpty) {
+      if (submitted['data'] is List) return _parseResults(submitted);
+      throw const ApiException('RightAPI 异步提交未返回 task_id。');
+    }
+    final deadline = DateTime.now().add(Duration(seconds: timeoutSeconds));
+    while (DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      final task = await client.getJson(
+        'https://www.rightapi.ai/v1/tasks/${Uri.encodeComponent(taskId)}',
+        cancelToken: cancelToken,
+      );
+      if (task['data'] is List) return _parseResults(task);
+      final status = task['status']?.toString().toLowerCase();
+      if (status == 'completed') return _parseResults(task);
+      if (status == 'failed' || status == 'cancelled') {
+        final error = task['error'];
+        if (error is Map && error['message'] is String) {
+          throw ApiException('RightAPI 任务失败：${error['message']}');
+        }
+        throw const ApiException('RightAPI 任务失败。');
+      }
+    }
+    throw const ApiException('RightAPI 异步任务轮询超时。');
   }
 
   List<GenerationResult> _parseResults(Map<String, dynamic> response) {

@@ -85,6 +85,21 @@ class OpenAiClient {
     }
   }
 
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        path,
+        cancelToken: cancelToken,
+      );
+      return response.data ?? <String, dynamic>{};
+    } on DioException catch (error) {
+      throw ApiException(extractErrorMessage(error));
+    }
+  }
+
   /// 流式请求，支持 Responses API 和 Images API 两种格式。
   ///
   /// [isImagesApi] 为 true 时解析 Image API 的 partial/completed 事件，

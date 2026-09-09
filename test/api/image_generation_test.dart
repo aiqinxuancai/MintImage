@@ -25,10 +25,11 @@ void main() {
               jsonDecode(await utf8.decoder.bind(request).join())
                   as Map<String, dynamic>;
 
-          expect(body['model'], 'gpt-image-2');
+          expect(body['model'], 'gpt-image-2.5-flare');
           expect(body['prompt'], 'a red apple on white background');
           expect(body['n'], 1);
           expect(body['size'], '1024x1024');
+          expect(body.containsKey('imageSize'), isFalse);
           expect(body['quality'], 'low');
           expect(body['output_format'], 'png');
           expect(body.containsKey('response_format'), isFalse);
@@ -62,7 +63,8 @@ void main() {
 
         final results = await api.generate(
           request,
-          _profileFor(server),
+          _profileFor(server, model: 'gpt-image-2.5-flare'),
+          responseFormat: 'url',
           timeoutSeconds: 600,
         );
 
@@ -148,7 +150,7 @@ void main() {
 
         final results = await api.generate(
           request,
-          _profileFor(server),
+          _profileFor(server, model: 'legacy-image-model'),
           responseFormat: 'url',
           timeoutSeconds: 600,
         );
