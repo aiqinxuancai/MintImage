@@ -10,6 +10,65 @@ import 'package:path/path.dart' as p;
 
 void main() {
   group('ImageEditApi', () {
+    test(
+      'uploads a reference image larger than 25 MB without truncating it',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'mint-large-edit-',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        const imageSize = 26 * 1024 * 1024;
+        final image = File(p.join(directory.path, 'large.png'));
+        final file = await image.open(mode: FileMode.write);
+        await file.writeFrom(
+          base64Decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',
+          ),
+        );
+        await file.truncate(imageSize);
+        await file.close();
+        var receivedBytes = 0;
+        var expectedBytes = 0;
+        final server = await _startServer((request) async {
+          expect(request.uri.path, '/v1/images/edits');
+          expectedBytes = request.contentLength;
+          receivedBytes = await request.fold<int>(
+            0,
+            (size, chunk) => size + chunk.length,
+          );
+          request.response.headers.contentType = ContentType.json;
+          request.response.write(
+            jsonEncode({
+              'data': [
+                {'url': 'https://example.com/large-edit.png'},
+              ],
+            }),
+          );
+          await request.response.close();
+        });
+        addTearDown(() => server.close(force: true));
+        final results = await const ImageEditApi().edit(
+          GenerationRequest(
+            prompt: 'edit the full reference image',
+            imagePaths: [image.path],
+            sizePreset: SizePreset.square1k,
+            customWidth: 1024,
+            customHeight: 1024,
+            quality: ImageQuality.auto,
+            count: 1,
+            apiProfileId: 'default',
+          ),
+          _profileFor(server),
+          timeoutSeconds: 30,
+        );
+        expect(receivedBytes, expectedBytes);
+        expect(receivedBytes, greaterThan(imageSize));
+        expect(receivedBytes, lessThan(imageSize + 2048));
+        expect(await image.length(), imageSize);
+        expect(results.single.imageUrl, 'https://example.com/large-edit.png');
+      },
+    );
+
     test('uploads multiple image fields as multipart form-data', () async {
       final tempDir = await Directory.systemTemp.createTemp('gpt-edit-api');
       addTearDown(() => tempDir.delete(recursive: true));

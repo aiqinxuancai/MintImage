@@ -31,8 +31,6 @@ class PickedAttachment {
 class AttachmentPickerService {
   AttachmentPickerService() : _imagePicker = ImagePicker();
 
-  static const int maxFileSizeBytes = 25 * 1024 * 1024;
-
   final ImagePicker _imagePicker;
 
   Future<List<PickedAttachment>> pickImages() async {

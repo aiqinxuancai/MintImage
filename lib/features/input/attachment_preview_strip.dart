@@ -79,6 +79,7 @@ class _AttachmentThumb extends StatelessWidget {
               width: 44,
               height: 44,
               fit: BoxFit.cover,
+              cacheWidth: (44 * MediaQuery.devicePixelRatioOf(context)).ceil(),
               errorBuilder: (context, error, stackTrace) => Container(
                 width: 44,
                 height: 44,

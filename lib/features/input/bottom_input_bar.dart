@@ -20,6 +20,7 @@ import '../../core/services/image_clipboard_service.dart';
 import '../../shared/theme.dart';
 import 'attachment_preview_strip.dart';
 import 'image_format_selector.dart';
+import 'prompt_editor_page.dart';
 import 'quality_selector.dart';
 import 'quantity_selector.dart';
 import 'size_selector.dart';
@@ -33,10 +34,12 @@ class BottomInputBar extends ConsumerStatefulWidget {
     super.key,
     required this.onSubmit,
     this.onAttachmentCountChanged,
+    this.maxHeight,
   });
 
   final Future<void> Function(GenerationRequest request) onSubmit;
   final ValueChanged<int>? onAttachmentCountChanged;
+  final double? maxHeight;
 
   @override
   ConsumerState<BottomInputBar> createState() => BottomInputBarState();
@@ -45,6 +48,8 @@ class BottomInputBar extends ConsumerStatefulWidget {
 class BottomInputBarState extends ConsumerState<BottomInputBar> {
   final TextEditingController _promptController = TextEditingController();
   final FocusNode _promptFocusNode = FocusNode();
+  final GlobalKey _promptAreaKey = GlobalKey();
+  double? _promptHeight;
 
   SizePreset _sizePreset = SizePreset.auto;
   ImageQuality _quality = ImageQuality.auto;
@@ -236,243 +241,339 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
         .toList();
     final canUseSendButton =
         !_optimizingPrompt && (hasApiKey || otherProfiles.isNotEmpty);
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final theme = Theme.of(context);
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + bottomInset),
-      child: SafeArea(
-        top: false,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Material(
-              color: Colors.transparent,
-              child: DecoratedBox(
-                decoration: AppDecorations.glass(radius: 22),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_attachments.isNotEmpty) ...[
-                        AttachmentPreviewStrip(
-                          attachments: _attachments,
-                          onRemove: (index) {
-                            _setAttachments([
-                              for (int i = 0; i < _attachments.length; i++)
-                                if (i != index) _attachments[i],
-                            ]);
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 6),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: AnimatedBuilder(
-                              animation: _promptFocusNode,
-                              builder: (context, child) {
-                                final focused = _promptFocusNode.hasFocus;
-                                return DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: focused
-                                          ? AppThemeTokens.primary
-                                          : AppThemeTokens.border,
-                                      width: focused ? 1.4 : 1,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight:
+            widget.maxHeight ??
+            MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+        child: SafeArea(
+          top: false,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Material(
+                color: Colors.transparent,
+                child: DecoratedBox(
+                  decoration: AppDecorations.glass(radius: 22),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 28,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: _promptHeight == null
+                                    ? null
+                                    : IconButton(
+                                        tooltip: '收起输入框',
+                                        padding: EdgeInsets.zero,
+                                        iconSize: 18,
+                                        onPressed: () => setState(
+                                          () => _promptHeight = null,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                        ),
+                                      ),
+                              ),
+                              Expanded(
+                                child: Tooltip(
+                                  message: '拖动调整输入框高度，双击收起',
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.resizeUpDown,
+                                    child: GestureDetector(
+                                      key: const Key('prompt-resize-handle'),
+                                      behavior: HitTestBehavior.opaque,
+                                      onVerticalDragUpdate: _resizePrompt,
+                                      onDoubleTap: () =>
+                                          setState(() => _promptHeight = null),
+                                      child: Center(
+                                        child: Container(
+                                          width: 40,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: AppThemeTokens.textSecondary
+                                                .withValues(alpha: 0.45),
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  child: child,
-                                );
-                              },
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minHeight: _primaryInputHeight,
                                 ),
-                                child: Stack(
-                                  alignment: Alignment.bottomLeft,
-                                  children: [
-                                    Focus(
-                                      onKeyEvent: _handleKeyEvent,
-                                      child: TextField(
-                                        key: const Key('prompt-input'),
-                                        controller: _promptController,
-                                        focusNode: _promptFocusNode,
-                                        readOnly: _optimizingPrompt,
-                                        minLines: 1,
-                                        maxLines: 4,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: AppThemeTokens.textPrimary,
-                                              fontSize: 13,
-                                              height: 1.25,
-                                            ),
-                                        textAlignVertical:
-                                            TextAlignVertical.center,
-                                        textInputAction:
-                                            TextInputAction.newline,
-                                        keyboardType: TextInputType.multiline,
-                                        decoration: InputDecoration(
-                                          isDense: true,
-                                          filled: false,
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          disabledBorder: InputBorder.none,
-                                          errorBorder: InputBorder.none,
-                                          focusedErrorBorder: InputBorder.none,
-                                          constraints: const BoxConstraints(
-                                            minHeight: _primaryInputHeight,
-                                          ),
-                                          hintText: _attachments.isEmpty
-                                              ? '描述你想生成的画面'
-                                              : '描述你想如何修改这些图片',
-                                          hintStyle: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: AppThemeTokens
-                                                    .textSecondary
-                                                    .withValues(alpha: 0.82),
-                                                fontSize: 13,
-                                                height: 1.25,
-                                              ),
-                                          contentPadding:
-                                              const EdgeInsets.fromLTRB(
-                                                12,
-                                                15,
-                                                70,
-                                                7,
-                                              ),
+                              ),
+                              IconButton(
+                                tooltip: '全屏编辑提示词',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 28,
+                                  height: 28,
+                                ),
+                                iconSize: 18,
+                                onPressed: _optimizingPrompt
+                                    ? null
+                                    : _openPromptEditor,
+                                icon: const Icon(Icons.open_in_full_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_attachments.isNotEmpty) ...[
+                          AttachmentPreviewStrip(
+                            attachments: _attachments,
+                            onRemove: (index) {
+                              _setAttachments([
+                                for (int i = 0; i < _attachments.length; i++)
+                                  if (i != index) _attachments[i],
+                              ]);
+                            },
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: AnimatedBuilder(
+                                  animation: _promptFocusNode,
+                                  builder: (context, child) {
+                                    final focused = _promptFocusNode.hasFocus;
+                                    return DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: focused
+                                              ? AppThemeTokens.primary
+                                              : AppThemeTokens.border,
+                                          width: focused ? 1.4 : 1,
                                         ),
+                                      ),
+                                      child: child,
+                                    );
+                                  },
+                                  child: ConstrainedBox(
+                                    key: _promptAreaKey,
+                                    constraints: const BoxConstraints(
+                                      minHeight: _primaryInputHeight,
+                                    ),
+                                    child: SizedBox(
+                                      height: _promptHeight,
+                                      child: Stack(
+                                        alignment: Alignment.bottomLeft,
+                                        children: [
+                                          Focus(
+                                            onKeyEvent: _handleKeyEvent,
+                                            child: TextField(
+                                              key: const Key('prompt-input'),
+                                              controller: _promptController,
+                                              focusNode: _promptFocusNode,
+                                              selectAllOnFocus: false,
+                                              readOnly: _optimizingPrompt,
+                                              expands: _promptHeight != null,
+                                              minLines: _promptHeight == null
+                                                  ? 1
+                                                  : null,
+                                              maxLines: _promptHeight == null
+                                                  ? 4
+                                                  : null,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: AppThemeTokens
+                                                        .textPrimary,
+                                                    fontSize: 13,
+                                                    height: 1.25,
+                                                  ),
+                                              textAlignVertical:
+                                                  _promptHeight == null
+                                                  ? TextAlignVertical.center
+                                                  : TextAlignVertical.top,
+                                              textInputAction:
+                                                  TextInputAction.newline,
+                                              keyboardType:
+                                                  TextInputType.multiline,
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                filled: false,
+                                                border: InputBorder.none,
+                                                enabledBorder: InputBorder.none,
+                                                focusedBorder: InputBorder.none,
+                                                disabledBorder:
+                                                    InputBorder.none,
+                                                errorBorder: InputBorder.none,
+                                                focusedErrorBorder:
+                                                    InputBorder.none,
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minHeight:
+                                                          _primaryInputHeight,
+                                                    ),
+                                                hintText: _attachments.isEmpty
+                                                    ? '描述你想生成的画面'
+                                                    : '描述你想如何修改这些图片',
+                                                hintStyle: theme
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: AppThemeTokens
+                                                          .textSecondary
+                                                          .withValues(
+                                                            alpha: 0.82,
+                                                          ),
+                                                      fontSize: 13,
+                                                      height: 1.25,
+                                                    ),
+                                                contentPadding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      12,
+                                                      15,
+                                                      70,
+                                                      7,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            right: 5,
+                                            bottom: 0,
+                                            height: _primaryInputHeight,
+                                            child: Center(
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  _AttachmentInputButton(
+                                                    enabled:
+                                                        !_submitting &&
+                                                        !_optimizingPrompt,
+                                                    onTap: _pickAttachments,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  _PromptOptimizeButton(
+                                                    key: const Key(
+                                                      'prompt-optimize-button',
+                                                    ),
+                                                    enabled: true,
+                                                    loading: _optimizingPrompt,
+                                                    onTap:
+                                                        _handlePromptOptimizationTap,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    Positioned(
-                                      right: 5,
-                                      bottom: 0,
-                                      height: _primaryInputHeight,
-                                      child: Center(
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            _AttachmentInputButton(
-                                              enabled:
-                                                  !_submitting &&
-                                                  !_optimizingPrompt,
-                                              onTap: _pickAttachments,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            _PromptOptimizeButton(
-                                              key: const Key(
-                                                'prompt-optimize-button',
-                                              ),
-                                              enabled: true,
-                                              loading: _optimizingPrompt,
-                                              onTap:
-                                                  _handlePromptOptimizationTap,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              _SendButton(
+                                key: const Key('submit-generation-button'),
+                                enabled: canUseSendButton,
+                                onTap: _submit,
+                                onLongPress: _showApiProfileSendSheet,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SizedBox(
+                              width: constraints.maxWidth,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizeSelector(
+                                      currentWidth: _customWidth,
+                                      currentHeight: _customHeight,
+                                      onSizeSelected: (width, height) {
+                                        setState(() {
+                                          _sizePreset = _matchingSizePreset(
+                                            width,
+                                            height,
+                                          );
+                                          _customWidth = width;
+                                          _customHeight = height;
+                                        });
+                                        _persistLastGenerationOptions();
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    QualitySelector(
+                                      selectedQuality: _quality,
+                                      onSelected: (quality) {
+                                        setState(() {
+                                          _quality = quality;
+                                        });
+                                        _persistLastGenerationOptions();
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    ImageFormatSelector(
+                                      selectedFormat: _outputFormat,
+                                      onSelected: (format) {
+                                        setState(() {
+                                          _outputFormat = format;
+                                        });
+                                        _persistLastGenerationOptions();
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    QuantitySelector(
+                                      count: _count,
+                                      onSelected: (count) {
+                                        setState(() {
+                                          _count = count;
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _ApiProfileSwitchButton(
+                                      activeProfile: activeProfile,
+                                      onTap: _showApiProfileSwitchSheet,
                                     ),
                                   ],
                                 ),
                               ),
+                            );
+                          },
+                        ),
+                        if (!hasApiKey) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            otherProfiles.isEmpty
+                                ? '当前配置缺少 API Key，发送按钮已禁用。'
+                                : '当前配置缺少 API Key，可长按发送切换其他配置。',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                          const SizedBox(width: 7),
-                          _SendButton(
-                            key: const Key('submit-generation-button'),
-                            enabled: canUseSendButton,
-                            onTap: _submit,
-                            onLongPress: _showApiProfileSendSheet,
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 6),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          return SizedBox(
-                            width: constraints.maxWidth,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizeSelector(
-                                    currentWidth: _customWidth,
-                                    currentHeight: _customHeight,
-                                    onSizeSelected: (width, height) {
-                                      setState(() {
-                                        _sizePreset = _matchingSizePreset(
-                                          width,
-                                          height,
-                                        );
-                                        _customWidth = width;
-                                        _customHeight = height;
-                                      });
-                                      _persistLastGenerationOptions();
-                                    },
-                                  ),
-                                  const SizedBox(width: 6),
-                                  QualitySelector(
-                                    selectedQuality: _quality,
-                                    onSelected: (quality) {
-                                      setState(() {
-                                        _quality = quality;
-                                      });
-                                      _persistLastGenerationOptions();
-                                    },
-                                  ),
-                                  const SizedBox(width: 6),
-                                  ImageFormatSelector(
-                                    selectedFormat: _outputFormat,
-                                    onSelected: (format) {
-                                      setState(() {
-                                        _outputFormat = format;
-                                      });
-                                      _persistLastGenerationOptions();
-                                    },
-                                  ),
-                                  const SizedBox(width: 6),
-                                  QuantitySelector(
-                                    count: _count,
-                                    onSelected: (count) {
-                                      setState(() {
-                                        _count = count;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 6),
-                                  _ApiProfileSwitchButton(
-                                    activeProfile: activeProfile,
-                                    onTap: _showApiProfileSwitchSheet,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      if (!hasApiKey) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          otherProfiles.isEmpty
-                              ? '当前配置缺少 API Key，发送按钮已禁用。'
-                              : '当前配置缺少 API Key，可长按发送切换其他配置。',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -481,6 +582,37 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
         ),
       ),
     );
+  }
+
+  void _resizePrompt(DragUpdateDetails details) {
+    final renderBox =
+        _promptAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final maxHeight = widget.maxHeight ?? viewportHeight;
+    final historySpace = (viewportHeight * 0.2).clamp(80.0, 160.0);
+    final chromeHeight = _attachments.isEmpty ? 100.0 : 164.0;
+    final maxPromptHeight = (maxHeight - historySpace - chromeHeight).clamp(
+      _primaryInputHeight,
+      double.infinity,
+    );
+    setState(() {
+      _promptHeight = (renderBox.size.height - details.delta.dy).clamp(
+        _primaryInputHeight,
+        maxPromptHeight,
+      );
+    });
+  }
+
+  Future<void> _openPromptEditor() async {
+    unfocusPrompt();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => PromptEditorPage(controller: _promptController),
+      ),
+    );
+    if (mounted) _promptFocusNode.requestFocus();
   }
 
   KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
@@ -585,10 +717,6 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
           _showMessage('剪贴板图片文件不存在，无法加入附件。');
           return;
         }
-        if (attachment.sizeBytes > AttachmentPickerService.maxFileSizeBytes) {
-          _showMessage('已忽略 1 张超过 25MB 的剪贴板图片。');
-          return;
-        }
         _setAttachments([..._attachments, attachment]);
         return;
       }
@@ -613,35 +741,18 @@ class BottomInputBarState extends ConsumerState<BottomInputBar> {
 
   Future<void> _pickAttachments() async {
     unfocusPrompt();
-    final picked = await ref.read(attachmentPickerServiceProvider).pickImages();
-    if (!mounted) {
-      return;
-    }
-    unfocusPrompt();
-    if (picked.isEmpty) {
-      return;
-    }
-
-    final valid = <PickedAttachment>[];
-    final oversized = <PickedAttachment>[];
-
-    for (final item in picked) {
-      if (item.sizeBytes > AttachmentPickerService.maxFileSizeBytes) {
-        oversized.add(item);
-      } else {
-        valid.add(item);
+    try {
+      final picked = await ref
+          .read(attachmentPickerServiceProvider)
+          .pickImages();
+      if (!mounted) return;
+      unfocusPrompt();
+      if (picked.isNotEmpty) {
+        _setAttachments([..._attachments, ...picked]);
       }
+    } catch (error) {
+      if (mounted) _showMessage('读取图片失败：$error');
     }
-
-    if (oversized.isNotEmpty) {
-      _showMessage('已忽略 ${oversized.length} 张超过 25MB 的图片。');
-    }
-
-    if (valid.isEmpty) {
-      return;
-    }
-
-    _setAttachments([..._attachments, ...valid]);
   }
 
   Future<void> _submit({String? apiProfileId}) async {

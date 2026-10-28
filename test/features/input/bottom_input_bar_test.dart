@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:mint_image/core/models/image_record.dart';
 import 'package:mint_image/core/models/settings_model.dart';
 import 'package:mint_image/core/providers/app_providers.dart';
 import 'package:mint_image/core/providers/settings_provider.dart';
+import 'package:mint_image/core/services/attachment_picker_service.dart';
 import 'package:mint_image/features/input/bottom_input_bar.dart';
 
 void main() {
@@ -33,6 +35,199 @@ void main() {
       moreOrLessEquals(tester.getRect(inputFinder).center.dy),
     );
   });
+
+  testWidgets(
+    'dragging the handle resizes and collapses without losing the draft',
+    (tester) async {
+      await _pumpInputBar(tester);
+      final input = find.byKey(const Key('prompt-input'));
+      final handle = find.byKey(const Key('prompt-resize-handle'));
+      await tester.enterText(input, '第一行\n第二行');
+      await tester.pump();
+      final originalHeight = tester.getSize(input).height;
+      await tester.drag(handle, const Offset(0, -180));
+      await tester.pump();
+      expect(tester.getSize(input).height, greaterThan(originalHeight + 100));
+      expect(tester.widget<TextField>(input).controller!.text, '第一行\n第二行');
+
+      await tester.tap(find.byTooltip('收起输入框'));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(input).height, moreOrLessEquals(originalHeight));
+      expect(tester.widget<TextField>(input).controller!.text, '第一行\n第二行');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'resizing stays inside the available body when the keyboard appears',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await _pumpInputBar(tester);
+      await tester.drag(
+        find.byKey(const Key('prompt-resize-handle')),
+        const Offset(0, -900),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester
+            .getRect(find.byKey(const Key('submit-generation-button')))
+            .bottom,
+        lessThan(380),
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('prompt-input'))).top,
+        greaterThanOrEqualTo(0),
+      );
+    },
+  );
+
+  testWidgets(
+    'fullscreen edits and cursor position survive Done and system Back',
+    (tester) async {
+      GenerationRequest? submittedRequest;
+      await _pumpInputBar(
+        tester,
+        onSubmit: (request) async => submittedRequest = request,
+      );
+      final input = find.byKey(const Key('prompt-input'));
+      await tester.enterText(input, '长提示词的初稿');
+      final controller = tester.widget<TextField>(input).controller!;
+      controller.selection = const TextSelection.collapsed(offset: 2);
+
+      await tester.tap(find.byTooltip('全屏编辑提示词'));
+      await tester.pumpAndSettle();
+      final fullscreenInput = find.byKey(const Key('fullscreen-prompt-input'));
+      expect(tester.getSize(fullscreenInput).height, greaterThan(400));
+      expect(
+        tester
+            .widget<TextField>(fullscreenInput)
+            .controller!
+            .selection
+            .baseOffset,
+        2,
+      );
+      await tester.enterText(fullscreenInput, '第一段\n第二段\n第三段');
+      controller.selection = const TextSelection.collapsed(offset: 4);
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+      expect(controller.text, '第一段\n第二段\n第三段');
+      expect(controller.selection.baseOffset, 4);
+
+      await tester.tap(find.byTooltip('全屏编辑提示词'));
+      await tester.pumpAndSettle();
+      await tester.enterText(fullscreenInput, '返回也保留的修改');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(controller.text, '返回也保留的修改');
+      await tester.tap(find.byKey(const Key('submit-generation-button')));
+      await tester.pump();
+      expect(submittedRequest!.prompt, '返回也保留的修改');
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets(
+    'fullscreen editor keeps mobile keyboard space and Escape preserves edits',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await _pumpInputBar(tester);
+      await tester.tap(find.byTooltip('全屏编辑提示词'));
+      await tester.pumpAndSettle();
+      tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+      await tester.pumpAndSettle();
+      final input = find.byKey(const Key('fullscreen-prompt-input'));
+      expect(tester.getRect(input).bottom, lessThanOrEqualTo(380));
+      await tester.enterText(input, '保留退出前的文本');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('fullscreen-prompt-input')), findsNothing);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('prompt-input')))
+            .controller!
+            .text,
+        '保留退出前的文本',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('selected attachments above 25 MB are retained and submitted', (
+    tester,
+  ) async {
+    GenerationRequest? submittedRequest;
+    final picker = _AttachmentPicker([
+      const PickedAttachment(
+        path: 'large-test.png',
+        name: 'large-test.png',
+        sizeBytes: 26 * 1024 * 1024,
+      ),
+      const PickedAttachment(
+        path: 'small-test.png',
+        name: 'small-test.png',
+        sizeBytes: 1024,
+      ),
+    ]);
+    final key = GlobalKey<BottomInputBarState>();
+    await _pumpInputBar(
+      tester,
+      inputBarKey: key,
+      attachmentPicker: picker,
+      onSubmit: (request) async => submittedRequest = request,
+    );
+    await tester.tap(find.byIcon(Icons.attach_file_rounded));
+    await tester.pumpAndSettle();
+    expect(key.currentState!.attachmentCount, 2);
+    await tester.enterText(find.byKey(const Key('prompt-input')), '编辑大图');
+    await tester.tap(find.byKey(const Key('submit-generation-button')));
+    await tester.pump();
+    expect(submittedRequest!.imagePaths, ['large-test.png', 'small-test.png']);
+  });
+
+  testWidgets(
+    'clipboard attachments above 25 MB are retained',
+    (tester) async {
+      const channel = MethodChannel('mint_image/image_clipboard');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        (call) async => {'path': 'large-clipboard.png'},
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        ),
+      );
+      await IOOverrides.runZoned(() async {
+        final key = GlobalKey<BottomInputBarState>();
+        await _pumpInputBar(tester, inputBarKey: key);
+        await tester.enterText(find.byKey(const Key('prompt-input')), '剪贴板参考图');
+        final modifier = Platform.isMacOS
+            ? LogicalKeyboardKey.metaLeft
+            : LogicalKeyboardKey.controlLeft;
+        await tester.sendKeyDownEvent(modifier);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+        await tester.sendKeyUpEvent(modifier);
+        await tester.pumpAndSettle();
+        expect(key.currentState!.attachmentCount, 1);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }, createFile: (path) => _LargeClipboardFile(path));
+    },
+    skip: !Platform.isWindows && !Platform.isMacOS,
+  );
 
   testWidgets('shows clickable stop loading state while optimizing', (
     tester,
@@ -215,6 +410,8 @@ Future<void> _pumpInputBar(
   PromptOptimizationApi? promptOptimizationApi,
   SettingsModel settings = _settings,
   GlobalKey<BottomInputBarState>? inputBarKey,
+  AttachmentPickerService? attachmentPicker,
+  ValueChanged<int>? onAttachmentCountChanged,
   Future<void> Function(GenerationRequest request)? onSubmit,
 }) async {
   SharedPreferences.setMockInitialValues(const {});
@@ -228,17 +425,27 @@ Future<void> _pumpInputBar(
         promptOptimizationApiProvider.overrideWithValue(
           promptOptimizationApi ?? const PromptOptimizationApi(),
         ),
+        if (attachmentPicker != null)
+          attachmentPickerServiceProvider.overrideWithValue(attachmentPicker),
       ],
       child: MaterialApp(
         home: Scaffold(
-          body: Align(
-            alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              width: 420,
-              child: BottomInputBar(
-                key: inputBarKey,
-                onSubmit: onSubmit ?? (request) async {},
-              ),
+          body: LayoutBuilder(
+            builder: (context, constraints) => Column(
+              children: [
+                const Spacer(),
+                Center(
+                  child: SizedBox(
+                    width: 420,
+                    child: BottomInputBar(
+                      key: inputBarKey,
+                      maxHeight: constraints.maxHeight,
+                      onSubmit: onSubmit ?? (request) async {},
+                      onAttachmentCountChanged: onAttachmentCountChanged,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -246,6 +453,33 @@ Future<void> _pumpInputBar(
     ),
   );
   await tester.pump();
+}
+
+class _AttachmentPicker extends AttachmentPickerService {
+  _AttachmentPicker(this.attachments);
+  final List<PickedAttachment> attachments;
+
+  @override
+  Future<List<PickedAttachment>> pickImages() async => attachments;
+}
+
+class _LargeClipboardFile implements File {
+  _LargeClipboardFile(this.path);
+
+  @override
+  final String path;
+
+  @override
+  Future<bool> exists() async => true;
+
+  @override
+  Future<int> length() async => 26 * 1024 * 1024;
+
+  @override
+  Future<Uint8List> readAsBytes() async => Uint8List(0);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 const _apiProfile = ApiProfile(

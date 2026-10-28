@@ -224,49 +224,54 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             Positioned.fill(
               child: hasApiKey
-                  ? Column(
-                      children: [
-                        Expanded(
-                          child: ImageListWidget(
-                            onReusePrompt: (record) {
-                              _inputBarKey.currentState?.prefillFromRecord(
-                                record,
-                              );
-                            },
-                            onReuseEdit: (record) {
-                              _inputBarKey.currentState?.prefillForEdit(record);
-                            },
-                            onRegenerateRecord: _regenerateRecord,
-                            onRetryRecord: _retryRecord,
-                            onCancelRecord: _cancelRecord,
-                            onDeleteRecord: _deleteRecord,
-                            onToggleFavorite: _toggleRecordFavorite,
-                            onPreviewNavigation: _handlePreviewNavigation,
-                            currentAttachmentCount: _attachmentCount,
-                            onAppendRecordToAttachments:
-                                _appendRecordToAttachments,
-                            selectionMode: _selectionMode,
-                            selectedRecordIds: _selectedRecordIds,
-                            onToggleSelection: _toggleRecordSelection,
-                            onSelectRecord: _selectRecord,
-                            favoriteRecordIds: activeFavoriteRecordIds,
-                            activeFavoriteFolderTitle:
-                                activeFavoriteFolder?.title,
-                            searchQuery: _searchQuery,
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => Column(
+                        children: [
+                          Expanded(
+                            child: ImageListWidget(
+                              onReusePrompt: (record) {
+                                _inputBarKey.currentState?.prefillFromRecord(
+                                  record,
+                                );
+                              },
+                              onReuseEdit: (record) {
+                                _inputBarKey.currentState?.prefillForEdit(
+                                  record,
+                                );
+                              },
+                              onRegenerateRecord: _regenerateRecord,
+                              onRetryRecord: _retryRecord,
+                              onCancelRecord: _cancelRecord,
+                              onDeleteRecord: _deleteRecord,
+                              onToggleFavorite: _toggleRecordFavorite,
+                              onPreviewNavigation: _handlePreviewNavigation,
+                              currentAttachmentCount: _attachmentCount,
+                              onAppendRecordToAttachments:
+                                  _appendRecordToAttachments,
+                              selectionMode: _selectionMode,
+                              selectedRecordIds: _selectedRecordIds,
+                              onToggleSelection: _toggleRecordSelection,
+                              onSelectRecord: _selectRecord,
+                              favoriteRecordIds: activeFavoriteRecordIds,
+                              activeFavoriteFolderTitle:
+                                  activeFavoriteFolder?.title,
+                              searchQuery: _searchQuery,
+                            ),
                           ),
-                        ),
-                        BottomInputBar(
-                          key: _inputBarKey,
-                          onSubmit: _submitRequest,
-                          onAttachmentCountChanged: (count) {
-                            if (mounted) {
-                              setState(() {
-                                _attachmentCount = count;
-                              });
-                            }
-                          },
-                        ),
-                      ],
+                          BottomInputBar(
+                            key: _inputBarKey,
+                            maxHeight: constraints.maxHeight,
+                            onSubmit: _submitRequest,
+                            onAttachmentCountChanged: (count) {
+                              if (mounted) {
+                                setState(() {
+                                  _attachmentCount = count;
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     )
                   : EmptyState(
                       title: '请先设置 API Key',
