@@ -54,7 +54,7 @@ class OpenAiClient {
     );
 
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<Object?>(
         path,
         data: body,
         options: Options(contentType: Headers.jsonContentType),
@@ -69,7 +69,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(response.data)}',
         ),
       );
-      return response.data ?? <String, dynamic>{};
+      return _parseJsonResponse(response, title);
     } on DioException catch (error) {
       stopwatch.stop();
       final message = extractErrorMessage(error);
@@ -90,11 +90,8 @@ class OpenAiClient {
     CancelToken? cancelToken,
   }) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        path,
-        cancelToken: cancelToken,
-      );
-      return response.data ?? <String, dynamic>{};
+      final response = await _dio.get<Object?>(path, cancelToken: cancelToken);
+      return _parseJsonResponse(response, 'GET $path');
     } on DioException catch (error) {
       throw ApiException(extractErrorMessage(error));
     }
@@ -265,7 +262,7 @@ class OpenAiClient {
     );
 
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<Object?>(
         path,
         data: formData,
         cancelToken: cancelToken,
@@ -279,7 +276,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(response.data)}',
         ),
       );
-      return response.data ?? <String, dynamic>{};
+      return _parseJsonResponse(response, title);
     } on DioException catch (error) {
       stopwatch.stop();
       final message = extractErrorMessage(error);
@@ -385,9 +382,55 @@ class OpenAiClient {
         eventType == 'image_edit.partial_image';
   }
 
+  Map<String, dynamic> _parseJsonResponse(
+    Response<Object?> response,
+    String title,
+  ) {
+    Object? data = response.data;
+    if (data == null) {
+      return <String, dynamic>{};
+    }
+    // Some compatible providers send valid JSON with Content-Type: text/plain.
+    // Keep the response untyped until both decoded maps and text are handled.
+    if (data is String) {
+      try {
+        data = jsonDecode(data.trim());
+      } on FormatException {
+        throw _invalidJsonResponse(response, title);
+      }
+    }
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    throw _invalidJsonResponse(response, title);
+  }
+
+  ApiException _invalidJsonResponse(Response<Object?> response, String title) {
+    final contentType =
+        response.headers.value(Headers.contentTypeHeader) ?? 'unknown';
+    final message = _withStatusCode(
+      '接口响应不是有效的 JSON 对象（Content-Type: $contentType），请检查 Base URL 或服务端返回格式。',
+      response.statusCode,
+    );
+    unawaited(
+      _requestLogService?.logError(
+        title,
+        '错误: $message\n响应体:\n${_summarizeData(response.data)}',
+      ),
+    );
+    return ApiException(message);
+  }
+
   static String extractErrorMessage(DioException error) {
     final statusCode = error.response?.statusCode;
-    final responseData = error.response?.data;
+    Object? responseData = error.response?.data;
+    if (responseData is String) {
+      try {
+        responseData = jsonDecode(responseData);
+      } on FormatException {
+        // Preserve non-JSON HTTP errors for the existing text fallback below.
+      }
+    }
     String? apiMessage;
 
     if (responseData is Map) {
@@ -426,7 +469,10 @@ class OpenAiClient {
       case DioExceptionType.cancel:
         return '请求已取消。';
       case DioExceptionType.unknown:
-        return _withStatusCode(error.message ?? '请求失败，请稍后重试。', statusCode);
+        return _withStatusCode(
+          error.message ?? error.error?.toString() ?? '请求失败，请稍后重试。',
+          statusCode,
+        );
     }
   }
 
@@ -452,6 +498,15 @@ class OpenAiClient {
   String _summarizeData(Object? data) {
     if (data == null) {
       return '(空)';
+    }
+
+    if (data is String) {
+      final text = data;
+      try {
+        data = jsonDecode(text);
+      } on FormatException {
+        return _truncate(text);
+      }
     }
 
     if (data is Map) {

@@ -49,6 +49,8 @@
 
 使用 [RightAPI 画图接口](https://docs.rightapi.ai/docs/rc_draw/) 时，Base URL 填写 `https://rightapi.ai`，生图 API 选择 `Images API`，可先用 `gpt-image-2` 验证。客户端会提交异步任务并轮询结果，流式开关不影响此流程；旧配置中的 `www.rightapi.ai/draw` 会自动转换为当前地址。GPT Image 模型使用 `1024x1024` 等像素尺寸，图生图通过 `/v1/images/edits` 提交。模型权限和可用性以你的 key 所属分组为准。
 
+使用 [TryAIGC](https://api.tryaigc.cn) 时，Base URL 填写 `https://api.tryaigc.cn`，生图 API 选择 `Images API`。已实测 `gpt-image-2` 在关闭流式请求时可以生成图片，建议保留默认的 600 秒超时；可用模型以你的 key 获取到的模型列表为准。
+
 ## 📦 自行构建
 
 ```bash
