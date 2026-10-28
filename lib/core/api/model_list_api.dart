@@ -4,13 +4,13 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../models/settings_model.dart';
-import '../services/request_log_service.dart';
+import 'api_request_logger.dart';
 import 'openai_client.dart';
 
 class ModelListApi {
   const ModelListApi({this.requestLogService});
 
-  final RequestLogService? requestLogService;
+  final ApiRequestLogger? requestLogService;
 
   Future<List<String>> fetchImageGenerationModels({
     required ApiProfile profile,

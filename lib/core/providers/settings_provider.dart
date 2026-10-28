@@ -6,7 +6,6 @@ import '../models/generation_request.dart';
 import '../models/settings_model.dart';
 import 'app_providers.dart';
 
-const _settingsStorageKey = 'settings_model_v1';
 const _uuid = Uuid();
 
 final settingsProvider =
@@ -26,7 +25,7 @@ class SettingsController extends StateNotifier<SettingsModel> {
   static SettingsModel loadFromPreferences(
     SharedPreferences sharedPreferences,
   ) {
-    final raw = sharedPreferences.getString(_settingsStorageKey);
+    final raw = sharedPreferences.getString(SettingsModel.storageKey);
     if (raw == null || raw.isEmpty) {
       return SettingsModel.initial();
     }
@@ -216,6 +215,9 @@ class SettingsController extends StateNotifier<SettingsModel> {
   }
 
   Future<void> _persist() async {
-    await _sharedPreferences.setString(_settingsStorageKey, state.encode());
+    await _sharedPreferences.setString(
+      SettingsModel.storageKey,
+      state.encode(),
+    );
   }
 }

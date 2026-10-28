@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 import '../models/generation_request.dart';
 import '../models/generation_result.dart';
 import '../models/settings_model.dart';
-import '../services/request_log_service.dart';
+import 'api_request_logger.dart';
 import 'openai_client.dart';
 import 'responses_image_api.dart';
 import 'rightapi_image_api.dart';
@@ -12,7 +12,7 @@ import 'rightapi_image_api.dart';
 class ImageEditApi {
   const ImageEditApi({this.requestLogService});
 
-  final RequestLogService? requestLogService;
+  final ApiRequestLogger? requestLogService;
 
   Future<List<GenerationResult>> edit(
     GenerationRequest request,
@@ -31,6 +31,28 @@ class ImageEditApi {
       requestLogService: requestLogService,
     );
 
+    try {
+      return await _edit(
+        client,
+        request,
+        profile,
+        responseFormat: responseFormat,
+        timeoutSeconds: timeoutSeconds,
+        cancelToken: cancelToken,
+      );
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<GenerationResult>> _edit(
+    OpenAiClient client,
+    GenerationRequest request,
+    ApiProfile profile, {
+    String? responseFormat,
+    required int timeoutSeconds,
+    CancelToken? cancelToken,
+  }) async {
     if (profile.apiMode == ImageGenerationApiMode.responses) {
       final body = buildResponsesImageBody(
         request: request,

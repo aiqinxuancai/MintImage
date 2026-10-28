@@ -28,6 +28,7 @@
 - **大图附件** — 支持选择、粘贴超过 25 MB 的参考图，实际上传上限由所用 API 决定
 - **丰富尺寸** — 1K / 2K / 4K 多档位、8 种常用比例，或自定义任意宽高
 - **批量生成** — 一次最多生成 16 张
+- **命令行生图** — Windows / macOS 独立控制台程序，支持 Agent 调用、批量并行、JSON 结果和错误退出码，执行后退出进程
 - **收藏夹** — 把满意的结果分类整理，随时回看
 - **历史记录** — 所有生成结果本地保存，离线可查
 - **多配置切换** — 同时管理多个 API 地址与密钥，一键切换
@@ -53,12 +54,39 @@
 
 使用 [TryAIGC](https://api.tryaigc.cn) 时，Base URL 填写 `https://api.tryaigc.cn`，生图 API 选择 `Images API`。已实测 `gpt-image-2` 在关闭流式请求时可以生成图片，建议保留默认的 600 秒超时；可用模型以你的 key 获取到的模型列表为准。
 
+## 命令行与 Agent 调用
+
+命令行功能随完整桌面包一起提供，不单独发布 CLI 包。解压 `MintImage-windows-x64.zip` 或 `MintImage-macos-arm64.zip` 后，图形界面正常启动；Agent 可调用包内的 `cli/bin/mint-image.exe`（Windows）或 `cli/bin/mint-image`（macOS）进行生图，无需安装 Flutter，也不会创建 UI。完整参数、图生图和错误协议见 [命令行文档](docs/CLI.md)。
+
+Windows PowerShell 示例：
+
+```powershell
+.\cli\bin\mint-image.exe profiles
+.\cli\bin\mint-image.exe generate --prompt "薄荷绿背景上的一只猫" --count 4 --parallel 2 --output-dir .\images
+.\cli\bin\mint-image.exe generate --profile "我的生图配置" --prompt "水彩风格的山间小屋" --output .\cabin.png
+$LASTEXITCODE
+```
+
+macOS 示例：
+
+```bash
+./cli/bin/mint-image profiles
+./cli/bin/mint-image generate --prompt '薄荷绿背景上的一只猫' --count 4 --parallel 2 --output-dir ./images
+./cli/bin/mint-image generate --profile '我的生图配置' --prompt '水彩风格的山间小屋' --output ./cabin.png
+echo $?
+```
+
+CLI 默认读取当前用户在 MintImage 中保存并选中的生图配置，无需重复填写密钥、地址或模型；也会继承 API 协议、流式开关和请求超时。`--profile` 可按名称或 ID 选择，`profiles` 以 JSON 列出配置但不输出密钥。命令行参数、`MINT_IMAGE_*` 环境变量可以覆盖已保存配置，`--no-app-config` 可关闭自动读取。
+
+`stdout` 返回一份 JSON，包含每个任务的状态和图片绝对路径；错误同时写入 `stderr`，保留 HTTP 状态码和接口原因。退出码 `0` 表示全部成功，`1` 表示运行失败或部分失败，`2` 表示参数、配置或输入错误。支持多个进程同时调用，自动生成的文件名不会互相覆盖。
+
 ## 📦 自行构建
 
 ```bash
 flutter pub get
 flutter run            # 调试运行
 flutter build windows  # 或 macos / apk
+dart run tool/build_cli.dart  # 在目标系统上构建 CLI：build/cli/bundle/
 ```
 
 ---

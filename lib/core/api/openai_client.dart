@@ -4,12 +4,13 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../models/settings_model.dart';
-import '../services/request_log_service.dart';
+import 'api_request_logger.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => message;
@@ -19,7 +20,7 @@ class OpenAiClient {
   OpenAiClient(
     ApiProfile profile, {
     required int timeoutSeconds,
-    RequestLogService? requestLogService,
+    ApiRequestLogger? requestLogService,
   }) : _requestLogService = requestLogService,
        _dio = Dio(
          BaseOptions(
@@ -35,7 +36,9 @@ class OpenAiClient {
        );
 
   final Dio _dio;
-  final RequestLogService? _requestLogService;
+  final ApiRequestLogger? _requestLogService;
+
+  void close() => _dio.close(force: true);
 
   Future<Map<String, dynamic>> postJson(
     String path,
@@ -81,7 +84,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(error.response?.data)}',
         ),
       );
-      throw ApiException(message);
+      throw ApiException(message, statusCode: error.response?.statusCode);
     }
   }
 
@@ -93,7 +96,10 @@ class OpenAiClient {
       final response = await _dio.get<Object?>(path, cancelToken: cancelToken);
       return _parseJsonResponse(response, 'GET $path');
     } on DioException catch (error) {
-      throw ApiException(extractErrorMessage(error));
+      throw ApiException(
+        extractErrorMessage(error),
+        statusCode: error.response?.statusCode,
+      );
     }
   }
 
@@ -171,7 +177,7 @@ class OpenAiClient {
       return result;
     } on DioException catch (error) {
       stopwatch.stop();
-      final message = extractErrorMessage(error);
+      final message = await _streamErrorMessage(error);
       unawaited(
         _requestLogService?.logError(
           title,
@@ -180,7 +186,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(error.response?.data)}',
         ),
       );
-      throw ApiException(message);
+      throw ApiException(message, statusCode: error.response?.statusCode);
     }
   }
 
@@ -231,7 +237,7 @@ class OpenAiClient {
       return result;
     } on DioException catch (error) {
       stopwatch.stop();
-      final message = extractErrorMessage(error);
+      final message = await _streamErrorMessage(error);
       unawaited(
         _requestLogService?.logError(
           title,
@@ -240,7 +246,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(error.response?.data)}',
         ),
       );
-      throw ApiException(message);
+      throw ApiException(message, statusCode: error.response?.statusCode);
     }
   }
 
@@ -288,7 +294,7 @@ class OpenAiClient {
           '响应体:\n${_summarizeData(error.response?.data)}',
         ),
       );
-      throw ApiException(message);
+      throw ApiException(message, statusCode: error.response?.statusCode);
     }
   }
 
@@ -330,38 +336,54 @@ class OpenAiClient {
         continue;
       }
 
+      final Map<String, dynamic> data;
       try {
-        final data = jsonDecode(dataStr) as Map<String, dynamic>;
-        final eventType = currentEventType ?? data['type'] as String?;
+        final decoded = jsonDecode(dataStr);
+        if (decoded is! Map<String, dynamic>) continue;
+        data = decoded;
+      } on FormatException {
+        continue;
+      }
+      final eventType = currentEventType ?? data['type'] as String?;
+      if (eventType == 'error' ||
+          eventType == 'response.failed' ||
+          eventType == 'response.incomplete' ||
+          data['error'] != null) {
+        final response = data['response'];
+        final detail = response is Map ? response : data;
+        final error = detail['error'];
+        final reason = error is Map ? error['message'] : error;
+        throw ApiException(
+          '流式请求失败：${reason ?? detail['message'] ?? detail['incomplete_details'] ?? eventType}',
+        );
+      }
 
-        if (isImagesApi) {
-          if (_isImageStreamResultEvent(eventType)) {
-            final b64 = data['b64_json'] as String?;
-            if (b64 != null && b64.isNotEmpty) {
-              lastImagesB64 = b64;
-            }
-          }
-        } else if (eventType == 'response.completed') {
-          final resp = data['response'];
-          if (resp is Map) {
-            completedResponse = Map<String, dynamic>.from(resp);
-          }
-        } else if (eventType == 'response.output_item.done') {
-          final item = data['item'];
-          if (item is Map) {
-            outputItems.add(Map<String, dynamic>.from(item));
-          }
-        } else if (eventType ==
-            'response.image_generation_call.partial_image') {
+      if (isImagesApi) {
+        if (_isImageStreamResultEvent(eventType)) {
           final b64 = data['b64_json'] as String?;
           if (b64 != null && b64.isNotEmpty) {
-            outputItems.add({
-              'type': 'image_generation_call',
-              'result': {'b64_json': b64},
-            });
+            lastImagesB64 = b64;
           }
         }
-      } catch (_) {}
+      } else if (eventType == 'response.completed') {
+        final resp = data['response'];
+        if (resp is Map) {
+          completedResponse = Map<String, dynamic>.from(resp);
+        }
+      } else if (eventType == 'response.output_item.done') {
+        final item = data['item'];
+        if (item is Map) {
+          outputItems.add(Map<String, dynamic>.from(item));
+        }
+      } else if (eventType == 'response.image_generation_call.partial_image') {
+        final b64 = data['b64_json'] as String?;
+        if (b64 != null && b64.isNotEmpty) {
+          outputItems.add({
+            'type': 'image_generation_call',
+            'result': {'b64_json': b64},
+          });
+        }
+      }
     }
 
     if (isImagesApi) {
@@ -382,6 +404,17 @@ class OpenAiClient {
         eventType == 'image_edit.partial_image';
   }
 
+  Future<String> _streamErrorMessage(DioException error) async {
+    final body = error.response?.data;
+    if (body is ResponseBody) {
+      error.response!.data = await body.stream
+          .map<List<int>>((chunk) => chunk)
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .join();
+    }
+    return extractErrorMessage(error);
+  }
+
   Map<String, dynamic> _parseJsonResponse(
     Response<Object?> response,
     String title,
@@ -400,7 +433,21 @@ class OpenAiClient {
       }
     }
     if (data is Map) {
-      return Map<String, dynamic>.from(data);
+      final result = Map<String, dynamic>.from(data);
+      // Compatible providers sometimes return a failed request with HTTP 200.
+      if (result['error'] != null || result['status'] == 'failed') {
+        throw ApiException(
+          extractErrorMessage(
+            DioException(
+              requestOptions: response.requestOptions,
+              response: response,
+              type: DioExceptionType.badResponse,
+            ),
+          ),
+          statusCode: response.statusCode,
+        );
+      }
+      return result;
     }
     throw _invalidJsonResponse(response, title);
   }
@@ -418,7 +465,7 @@ class OpenAiClient {
         '错误: $message\n响应体:\n${_summarizeData(response.data)}',
       ),
     );
-    return ApiException(message);
+    return ApiException(message, statusCode: response.statusCode);
   }
 
   static String extractErrorMessage(DioException error) {
@@ -461,7 +508,11 @@ class OpenAiClient {
       case DioExceptionType.receiveTimeout:
         return '请求超时，请检查超时设置或稍后重试。';
       case DioExceptionType.connectionError:
-        return _withStatusCode('网络连接失败，请检查网络或 Base URL。', statusCode);
+        final cause = error.error?.toString() ?? error.message;
+        return _withStatusCode(
+          '网络连接失败，请检查网络或 Base URL。${cause == null ? '' : '\n$cause'}',
+          statusCode,
+        );
       case DioExceptionType.badCertificate:
         return _withStatusCode('证书校验失败，请检查 HTTPS 配置。', statusCode);
       case DioExceptionType.badResponse:

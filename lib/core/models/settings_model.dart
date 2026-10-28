@@ -325,6 +325,7 @@ class WebDavBackupConfig {
 }
 
 class SettingsModel {
+  static const String storageKey = 'settings_model_v1';
   static const int defaultRequestTimeoutSeconds = 600;
 
   const SettingsModel({

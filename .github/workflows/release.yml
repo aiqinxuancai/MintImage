@@ -30,6 +30,18 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows --release --build-name $env:BUILD_NAME --build-number $env:BUILD_NUMBER --dart-define "APP_VERSION=$env:APP_VERSION"
 
+      - name: Build and verify Windows CLI
+        shell: pwsh
+        run: |
+          dart run tool/build_cli.dart
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:MINT_IMAGE_CLI_BINARY = (Resolve-Path build/cli/bundle/bin/mint-image.exe).Path
+          $env:RUN_LIVE_GENERATION = '0'
+          $env:RUN_LIVE_PROMPT_OPTIMIZATION = '0'
+          flutter test test/cli
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath build/cli/bundle -Destination build/windows/x64/runner/Release/cli -Recurse
+
       - name: Archive Windows build
         run: |
           cd build/windows/x64/runner/Release
@@ -96,10 +108,19 @@ jobs:
       - run: flutter pub get
       - run: flutter build macos --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER" --dart-define "APP_VERSION=$APP_VERSION"
 
+      - name: Build and verify macOS CLI
+        run: |
+          dart run tool/build_cli.dart
+          export MINT_IMAGE_CLI_BINARY="$PWD/build/cli/bundle/bin/mint-image"
+          export RUN_LIVE_GENERATION=0
+          export RUN_LIVE_PROMPT_OPTIMIZATION=0
+          flutter test test/cli
+          cp -R build/cli/bundle build/macos/Build/Products/Release/cli
+
       - name: Archive macOS build
         run: |
           cd build/macos/Build/Products/Release
-          zip -r ../../../../../MintImage-macos-arm64.zip *.app
+          zip -r ../../../../../MintImage-macos-arm64.zip *.app cli
 
       - uses: actions/upload-artifact@v6
         with:

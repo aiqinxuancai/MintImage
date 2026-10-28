@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../models/generation_request.dart';
 import '../models/generation_result.dart';
 import '../models/settings_model.dart';
-import '../services/request_log_service.dart';
+import 'api_request_logger.dart';
 import 'openai_client.dart';
 import 'responses_image_api.dart';
 import 'rightapi_image_api.dart';
@@ -11,7 +11,7 @@ import 'rightapi_image_api.dart';
 class ImageGenerationApi {
   const ImageGenerationApi({this.requestLogService});
 
-  final RequestLogService? requestLogService;
+  final ApiRequestLogger? requestLogService;
 
   Future<List<GenerationResult>> generate(
     GenerationRequest request,
@@ -26,6 +26,28 @@ class ImageGenerationApi {
       requestLogService: requestLogService,
     );
 
+    try {
+      return await _generate(
+        client,
+        request,
+        profile,
+        responseFormat: responseFormat,
+        timeoutSeconds: timeoutSeconds,
+        cancelToken: cancelToken,
+      );
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<List<GenerationResult>> _generate(
+    OpenAiClient client,
+    GenerationRequest request,
+    ApiProfile profile, {
+    String? responseFormat,
+    required int timeoutSeconds,
+    CancelToken? cancelToken,
+  }) async {
     if (profile.apiMode == ImageGenerationApiMode.responses) {
       final body = buildResponsesImageBody(
         request: request,

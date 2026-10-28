@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../models/settings_model.dart';
-import '../services/request_log_service.dart';
+import 'api_request_logger.dart';
 import 'openai_client.dart';
 
 enum PromptOptimizationDirection {
@@ -23,7 +23,7 @@ enum PromptOptimizationDirection {
 class PromptOptimizationApi {
   const PromptOptimizationApi({this.requestLogService});
 
-  final RequestLogService? requestLogService;
+  final ApiRequestLogger? requestLogService;
 
   Future<String> optimize({
     required String prompt,
