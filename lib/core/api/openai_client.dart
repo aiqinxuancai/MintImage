@@ -396,6 +396,8 @@ class OpenAiClient {
 
       if (nestedError is Map && nestedError['message'] is String) {
         apiMessage = nestedError['message'] as String;
+      } else if (nestedError is String && nestedError.trim().isNotEmpty) {
+        apiMessage = nestedError.trim();
       }
 
       apiMessage ??= switch (map['message']) {

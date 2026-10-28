@@ -67,13 +67,17 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    final previewBaseUrl = _baseUrlController.text.trim().replaceAll(
-      RegExp(r'/+$'),
-      '',
+    final previewProfile = ApiProfile(
+      id: 'preview',
+      name: '',
+      baseUrl: _baseUrlController.text.trim().isEmpty
+          ? 'https://example.com'
+          : _baseUrlController.text,
+      apiKey: '',
+      model: _modelController.text,
+      apiMode: _apiMode,
     );
-    final finalUrl = previewBaseUrl.isEmpty
-        ? 'https://example.com${_apiMode.generationPath}'
-        : '$previewBaseUrl${_apiMode.generationPath}';
+    final finalUrl = previewProfile.generationEndpoint;
 
     return Scaffold(
       appBar: AppBar(title: Text(_editingProfile == null ? '新增配置' : '编辑配置')),
@@ -192,9 +196,7 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('流式请求'),
-                      subtitle: const Text(
-                        '启用后发送 stream: true，可降低超时风险',
-                      ),
+                      subtitle: const Text('启用后发送 stream: true，可降低超时风险'),
                       value: _useStreaming,
                       onChanged: (v) => setState(() => _useStreaming = v),
                     ),

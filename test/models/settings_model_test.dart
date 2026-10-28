@@ -109,6 +109,42 @@ void main() {
     expect(decoded.activeProfile.generationEndpoint, contains('/v1/responses'));
   });
 
+  for (final baseUrl in [
+    'https://rightapi.ai',
+    ' https://rightapi.ai/v1/ ',
+    'https://www.rightapi.ai/',
+    'https://www.rightapi.ai/draw',
+    'https://rightapi.ai/draw/v1/',
+  ]) {
+    test('RightAPI image endpoints normalize $baseUrl to the site root', () {
+      final profile = ApiProfile.initial().copyWith(baseUrl: baseUrl);
+      expect(profile.usesRightApiImages, isTrue);
+      expect(profile.normalizedBaseUrl, 'https://rightapi.ai');
+      expect(
+        profile.generationEndpoint,
+        'https://rightapi.ai/v1/images/generations',
+      );
+      expect(profile.editEndpoint, 'https://rightapi.ai/v1/images/edits');
+    });
+  }
+
+  test('RightAPI normalization preserves Responses channel paths', () {
+    final profile = ApiProfile.initial().copyWith(
+      baseUrl: 'https://rightapi.ai/codex/v1/',
+      apiMode: ImageGenerationApiMode.responses,
+    );
+    expect(profile.usesRightApiImages, isFalse);
+    expect(profile.normalizedBaseUrl, 'https://rightapi.ai/codex/v1');
+  });
+
+  test('RightAPI detection requires its exact host', () {
+    final profile = ApiProfile.initial().copyWith(
+      baseUrl: 'https://rightapi.ai.example.com/draw/',
+    );
+    expect(profile.usesRightApiImages, isFalse);
+    expect(profile.normalizedBaseUrl, 'https://rightapi.ai.example.com/draw');
+  });
+
   test('legacy b64_json responseFormat is normalized to null', () {
     final decoded = SettingsModel.fromJson({
       'profiles': [

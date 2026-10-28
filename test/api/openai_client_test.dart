@@ -18,4 +18,19 @@ void main() {
 
     expect(OpenAiClient.extractErrorMessage(error), 'HTTP 504：Gateway timeout');
   });
+
+  test('extractErrorMessage preserves RightAPI string errors', () {
+    final requestOptions = RequestOptions(path: '/v1/images/generations');
+    final error = DioException(
+      requestOptions: requestOptions,
+      type: DioExceptionType.badResponse,
+      response: Response<Map<String, dynamic>>(
+        requestOptions: requestOptions,
+        statusCode: 400,
+        data: {'error': '模型已停用，请选择其他模型'},
+      ),
+    );
+
+    expect(OpenAiClient.extractErrorMessage(error), 'HTTP 400：模型已停用，请选择其他模型');
+  });
 }

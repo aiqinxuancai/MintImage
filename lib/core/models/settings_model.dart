@@ -93,7 +93,31 @@ class ApiProfile {
   final ImageGenerationApiMode apiMode;
   final bool useStreaming;
 
-  String get normalizedBaseUrl => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  bool get usesRightApiImages {
+    final host = Uri.tryParse(baseUrl.trim())?.host.toLowerCase();
+    return apiMode == ImageGenerationApiMode.images &&
+        (host == 'rightapi.ai' || host == 'www.rightapi.ai');
+  }
+
+  String get normalizedBaseUrl {
+    final normalized = baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    if (usesRightApiImages) {
+      final uri = Uri.parse(normalized);
+      if (const [
+        '',
+        '/v1',
+        '/draw',
+        '/draw/v1',
+      ].contains(uri.path.toLowerCase())) {
+        // Current image endpoints live at the site root, including task lookup.
+        return uri
+            .replace(host: 'rightapi.ai', path: '')
+            .toString()
+            .replaceAll(RegExp(r'/+$'), '');
+      }
+    }
+    return normalized;
+  }
 
   String get generationEndpoint =>
       '$normalizedBaseUrl${apiMode.generationPath}';
