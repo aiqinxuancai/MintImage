@@ -67,6 +67,7 @@ class ImageCell extends ConsumerWidget {
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: selectionMode ? onSelectionToggle : null,
+        onSecondaryTap: () => _showActions(context),
         onLongPress: selectionMode
             ? onSelectionToggle
             : () => _showActions(context),

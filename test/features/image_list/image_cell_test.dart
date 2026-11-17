@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -194,6 +195,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(regenerated, isTrue);
+  });
+
+  testWidgets('right click opens actions without opening the image preview', (
+    tester,
+  ) async {
+    var regenerated = false;
+    await _pumpImageCell(
+      tester,
+      _record.copyWith(
+        status: ImageRecordStatus.done,
+        sourceImagePaths: const ['missing-preview-image.png'],
+        clearErrorMessage: true,
+      ),
+      onRegenerate: () {
+        regenerated = true;
+      },
+    );
+
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(ImageCell)) + const Offset(120, 90),
+      kind: ui.PointerDeviceKind.mouse,
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(ImagePreviewPage), findsNothing);
+    expect(find.text('复用提示词'), findsOneWidget);
+    expect(find.text('再生成一张'), findsOneWidget);
+    expect(find.text('以此改图'), findsOneWidget);
+    expect(find.text('收藏到...'), findsOneWidget);
+    expect(find.text('删除这条记录'), findsOneWidget);
+
+    await tester.tap(find.text('再生成一张'));
+    await tester.pumpAndSettle();
+
+    expect(regenerated, isTrue);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('shows append attachment action when record has a local image', (
