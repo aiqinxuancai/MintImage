@@ -362,6 +362,10 @@ class GenerationController extends StateNotifier<GenerationState> {
         cancelToken: cancelToken,
       );
       return results.first;
+    } on MissingImageDataException {
+      // The server accepted the multi-image request and may have billed it;
+      // retrying with one image would bill again for a different result.
+      rethrow;
     } on ApiException {
       if (request.imagePaths.length <= 1) {
         rethrow;

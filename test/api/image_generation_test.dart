@@ -114,6 +114,52 @@ void main() {
       );
     });
 
+    test('reports a successful response without images', () async {
+      final server = await _startServer((request) async {
+        await request.drain<void>();
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'created': 1,
+            'data': [
+              <String, Object>{},
+              {'revised_prompt': 'x' * 500},
+            ],
+          }),
+        );
+        await request.response.close();
+      });
+      addTearDown(server.close);
+
+      await expectLater(
+        const ImageGenerationApi().generate(
+          GenerationRequest(
+            prompt: 'a red apple on white background',
+            imagePaths: const [],
+            sizePreset: SizePreset.square1k,
+            customWidth: 1024,
+            customHeight: 1024,
+            quality: ImageQuality.low,
+            count: 1,
+            apiProfileId: 'default',
+          ),
+          _profileFor(server),
+          timeoutSeconds: 600,
+        ),
+        throwsA(
+          isA<MissingImageDataException>().having(
+            (error) => error.message,
+            'message',
+            allOf(
+              contains('响应中没有图片数据'),
+              contains('"created": 1'),
+              contains('（共 500 字符）'),
+            ),
+          ),
+        ),
+      );
+    });
+
     test(
       'includes response_format and output_format when configured',
       () async {

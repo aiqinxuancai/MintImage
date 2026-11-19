@@ -167,6 +167,132 @@ void main() {
     });
   }
 
+  group('Images API stream parsing', () {
+    final image = base64Encode([7, 7, 7, 7]);
+    String sse(Object data, {String? event}) =>
+        '${event == null ? '' : 'event: $event\n'}data: ${jsonEncode(data)}\n\n';
+
+    final cases = <String, String>{
+      'event name differs from data type':
+          '${sse({'type': 'image_edit.completed', 'b64_json': image}, event: 'message')}'
+          'data: [DONE]\n\n',
+      'event name only': sse({
+        'b64_json': image,
+      }, event: 'image_generation.completed'),
+      'progress event with empty data before final image':
+          sse({'type': 'image_edit.in_progress', 'data': <Object>[]}) +
+          sse({'type': 'image_edit.completed', 'b64_json': image}),
+      'complete Images response in one event': sse({
+        'created': 1,
+        'data': [
+          {'b64_json': image},
+        ],
+      }),
+      'final JSON split over several data lines':
+          'event: image_edit.completed\n'
+          'data: {"type":"image_edit.completed",\n'
+          'data: "b64_json":"${image.substring(0, 3)}\n'
+          'data: ${image.substring(3)}"}\n\n',
+      'no blank line between events':
+          'data: ${jsonEncode({'type': 'image_edit.in_progress'})}\n'
+          'data: ${jsonEncode({'type': 'image_edit.completed', 'b64_json': image})}\n',
+      'stream ends without trailing blank line':
+          'event: image_edit.completed\ndata: ${jsonEncode({'b64_json': image})}',
+      'keep-alive comments followed by a plain JSON body':
+          ': keep-alive\n\n: keep-alive\n\n${jsonEncode({
+            'data': [
+              {'b64_json': image},
+            ],
+          })}\n',
+    };
+
+    for (final entry in cases.entries) {
+      test('extracts the final image: ${entry.key}', () async {
+        final server = await _respondWithText(
+          entry.value,
+          contentType: ContentType('text', 'event-stream'),
+        );
+        addTearDown(() => server.close(force: true));
+        final client = _clientFor(server);
+        addTearDown(client.close);
+
+        final result = await client.postMultipartStreaming(
+          '/v1/images/edits',
+          FormData(),
+        );
+        expect((result['data'] as List).single['b64_json'], image);
+      });
+    }
+
+    test('accepts a final image event that carries a URL', () async {
+      final server = await _respondWithText(
+        sse({
+          'type': 'image_generation.completed',
+          'url': 'https://cdn.example.com/a.png',
+        }),
+        contentType: ContentType('text', 'event-stream'),
+      );
+      addTearDown(() => server.close(force: true));
+      final client = _clientFor(server);
+      addTearDown(client.close);
+
+      final result = await client.postJsonStreaming(
+        '/v1/images/generations',
+        {},
+        isImagesApi: true,
+      );
+      expect(
+        (result['data'] as List).single['url'],
+        'https://cdn.example.com/a.png',
+      );
+    });
+
+    test('prefers the completed image over partial images', () async {
+      final partial = base64Encode([1]);
+      final server = await _respondWithText(
+        sse({'type': 'image_edit.completed', 'b64_json': image}) +
+            sse({'type': 'image_edit.partial_image', 'b64_json': partial}),
+        contentType: ContentType('text', 'event-stream'),
+      );
+      addTearDown(() => server.close(force: true));
+      final client = _clientFor(server);
+      addTearDown(client.close);
+
+      final result = await client.postMultipartStreaming(
+        '/v1/images/edits',
+        FormData(),
+      );
+      expect((result['data'] as List).single['b64_json'], image);
+    });
+
+    test('reports what the stream contained when no image arrives', () async {
+      final server = await _respondWithText(
+        '${sse({'type': 'image_edit.in_progress', 'data': <Object>[]})}'
+        'data: {"type":"image_edit.completed","b64_json":"${image.substring(0, 4)}\n\n',
+        contentType: ContentType('text', 'event-stream'),
+      );
+      addTearDown(() => server.close(force: true));
+      final client = _clientFor(server);
+      addTearDown(client.close);
+
+      await expectLater(
+        client.postMultipartStreaming('/v1/images/edits', FormData()),
+        throwsA(
+          isA<MissingImageDataException>().having(
+            (error) => error.message,
+            'message',
+            allOf(
+              startsWith('HTTP 200：'),
+              contains('没有解析到最终图片'),
+              contains('image_edit.in_progress ×1'),
+              contains('无法解析的 data：1 条'),
+            ),
+          ),
+        ),
+      );
+    });
+  });
+
   for (final body in [
     ['请求频率超限', '请等待 60 秒'],
     'Too many requests',

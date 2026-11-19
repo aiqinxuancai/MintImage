@@ -2,7 +2,59 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../models/generation_result.dart';
 import 'openai_client.dart';
+
+/// Parses an Images API `{data: [{b64_json | url}]}` response. Never returns
+/// an empty list: a successful response without images is reported as
+/// [MissingImageDataException] together with the (truncated) response body.
+List<GenerationResult> parseImagesApiResults(Map<String, dynamic> response) {
+  final payload = response['data'];
+  final results = <GenerationResult>[
+    if (payload is List)
+      for (final item in payload)
+        if (item is Map) ?_imageResult(Map<String, dynamic>.from(item)),
+  ];
+  if (results.isEmpty) {
+    throw MissingImageDataException(
+      '接口返回成功，但响应中没有图片数据，服务端可能已经计费。'
+      '\n\n接口返回：\n${const JsonEncoder.withIndent('  ').convert(_redactLongStrings(response))}',
+    );
+  }
+  return results;
+}
+
+GenerationResult? _imageResult(Map<String, dynamic> item) {
+  final b64Json = switch (item['b64_json']) {
+    final String value when value.isNotEmpty => value,
+    _ => null,
+  };
+  final imageUrl = switch (item['url']) {
+    final String value when value.isNotEmpty => value,
+    _ => null,
+  };
+  if (b64Json == null && imageUrl == null) {
+    return null;
+  }
+  return GenerationResult(
+    b64Json: b64Json,
+    imageUrl: imageUrl,
+    rawResponseValue: b64Json ?? imageUrl,
+  );
+}
+
+Object? _redactLongStrings(Object? value) {
+  return switch (value) {
+    String text when text.length > 200 =>
+      '${text.substring(0, 200)}…（共 ${text.length} 字符）',
+    Map map => {
+      for (final entry in map.entries)
+        '${entry.key}': _redactLongStrings(entry.value),
+    },
+    List list => [for (final item in list) _redactLongStrings(item)],
+    _ => value,
+  };
+}
 
 /// Accept immediate Images results or poll /v1/tasks when a task_id is returned.
 Future<Map<String, dynamic>> requestImageResult({
@@ -46,7 +98,7 @@ Future<Map<String, dynamic>> requestImageResult({
       return response;
     }
     if (status == 'completed') {
-      throw ApiException(
+      throw MissingImageDataException(
         '接口响应缺少图片数据。'
         '\n\n接口返回：\n${const JsonEncoder.withIndent('  ').convert(response)}',
       );

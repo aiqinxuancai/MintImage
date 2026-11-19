@@ -145,7 +145,7 @@ class ImageEditApi {
         timeoutSeconds: timeoutSeconds,
         cancelToken: cancelToken,
       );
-      return _parseResults(response);
+      return parseImagesApiResults(response);
     }
 
     final formData = FormData();
@@ -209,29 +209,11 @@ class ImageEditApi {
             ),
     );
 
-    return _parseResults(response);
+    return parseImagesApiResults(response);
   }
 
   bool _isGptImage2Family(String model) {
     final value = model.trim().toLowerCase().split('/').last;
     return RegExp(r'^gpt-image-2(?:\.\d+)?(?:-|$)').hasMatch(value);
-  }
-
-  List<GenerationResult> _parseResults(Map<String, dynamic> response) {
-    final payload = response['data'];
-    if (payload is! List) {
-      throw const ApiException('接口响应缺少图片数据。');
-    }
-
-    return payload.map((item) {
-      final map = Map<String, dynamic>.from(item as Map);
-      final rawResponseValue =
-          map['b64_json'] as String? ?? map['url'] as String?;
-      return GenerationResult(
-        b64Json: map['b64_json'] as String?,
-        imageUrl: map['url'] as String?,
-        rawResponseValue: rawResponseValue,
-      );
-    }).toList();
   }
 }

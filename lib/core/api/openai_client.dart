@@ -16,6 +16,13 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// The server accepted the request (and may already have billed it), but the
+/// response contained no usable image. Retrying with different inputs would
+/// bill again, so callers must not treat this as a request-shape failure.
+class MissingImageDataException extends ApiException {
+  const MissingImageDataException(super.message, {super.statusCode});
+}
+
 class OpenAiClient {
   OpenAiClient(
     ApiProfile profile, {
@@ -133,6 +140,7 @@ class OpenAiClient {
       ),
     );
 
+    final diagnostics = _StreamDiagnostics();
     try {
       final response = await _dio.post<ResponseBody>(
         path,
@@ -148,6 +156,7 @@ class OpenAiClient {
         response,
         title,
         isImagesApi: isImagesApi,
+        diagnostics: diagnostics,
       );
       stopwatch.stop();
 
@@ -159,7 +168,8 @@ class OpenAiClient {
             title,
             '耗时: ${stopwatch.elapsedMilliseconds} ms\n'
             '状态码: ${response.statusCode ?? 'unknown'}\n'
-            '流式响应，Images API，收到最终图片: $receivedImage',
+            '流式响应，Images API，收到最终图片: $receivedImage\n'
+            '${diagnostics.summary()}',
           ),
         );
       } else {
@@ -170,12 +180,17 @@ class OpenAiClient {
             title,
             '耗时: ${stopwatch.elapsedMilliseconds} ms\n'
             '状态码: ${response.statusCode ?? 'unknown'}\n'
-            '流式响应，Responses API，收到 $outputCount 个图片结果',
+            '流式响应，Responses API，收到 $outputCount 个图片结果\n'
+            '${diagnostics.summary()}',
           ),
         );
       }
 
       return result;
+    } on ApiException catch (error) {
+      stopwatch.stop();
+      _logStreamFailure(title, stopwatch, error);
+      rethrow;
     } on DioException catch (error) {
       stopwatch.stop();
       final message = await _streamErrorMessage(error);
@@ -213,6 +228,7 @@ class OpenAiClient {
       ),
     );
 
+    final diagnostics = _StreamDiagnostics();
     try {
       final response = await _dio.post<ResponseBody>(
         path,
@@ -224,6 +240,7 @@ class OpenAiClient {
         response,
         title,
         isImagesApi: true,
+        diagnostics: diagnostics,
       );
       stopwatch.stop();
       final data = result['data'];
@@ -233,10 +250,15 @@ class OpenAiClient {
           title,
           '耗时: ${stopwatch.elapsedMilliseconds} ms\n'
           '状态码: ${response.statusCode ?? 'unknown'}\n'
-          '流式响应，Images API，收到最终图片: $receivedImage',
+          '流式响应，Images API，收到最终图片: $receivedImage\n'
+          '${diagnostics.summary()}',
         ),
       );
       return result;
+    } on ApiException catch (error) {
+      stopwatch.stop();
+      _logStreamFailure(title, stopwatch, error);
+      rethrow;
     } on DioException catch (error) {
       stopwatch.stop();
       final message = await _streamErrorMessage(error);
@@ -304,107 +326,165 @@ class OpenAiClient {
     Response<ResponseBody> response,
     String title, {
     required bool isImagesApi,
+    required _StreamDiagnostics diagnostics,
   }) async {
     final responseBody = response.data;
     if (responseBody == null) {
-      return isImagesApi ? {'data': []} : {'output': []};
+      if (isImagesApi) {
+        throw _missingStreamImage(response, diagnostics);
+      }
+      return {'output': []};
     }
 
-    String? lastImagesB64;
+    Map<String, dynamic>? finalImage;
+    Map<String, dynamic>? partialImage;
     final outputItems = <Map<String, dynamic>>[];
     Map<String, dynamic>? completedResponse;
     String? currentEventType;
+    final dataLines = <String>[];
     bool? isEventStream;
     final jsonBody = StringBuffer();
+    // Lines that are not SSE fields; some relays mix a plain JSON body into
+    // an event stream (e.g. keep-alive comments followed by the final JSON).
+    final strayLines = StringBuffer();
 
-    await for (final rawLine
-        in responseBody.stream
-            .map<List<int>>((chunk) => chunk)
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())) {
-      final line = rawLine.trim();
-      if (isEventStream == null && line.isNotEmpty) {
-        isEventStream =
-            line.startsWith(':') ||
-            const ['data:', 'event:', 'id:', 'retry:'].any(line.startsWith);
-      }
-      if (isEventStream == false) {
-        jsonBody.writeln(rawLine);
-        continue;
-      }
-      if (line.isEmpty) {
-        currentEventType = null;
-        continue;
-      }
+    Map<String, dynamic>? handleEvent(
+      String? eventName,
+      Map<String, dynamic> data,
+    ) {
+      // Relays often rename the SSE `event:` field (e.g. `message`) while
+      // keeping the OpenAI event type in the JSON, so check both.
+      final dataType = data['type'];
+      final types = <String>{?eventName, if (dataType is String) dataType};
+      diagnostics.recordEvent(types, data);
 
-      if (line.startsWith('event:')) {
-        currentEventType = line.substring('event:'.length).trim();
-        continue;
-      }
-
-      if (!line.startsWith('data:')) {
-        continue;
-      }
-
-      final dataStr = line.substring('data:'.length).trim();
-      if (dataStr.isEmpty || dataStr == '[DONE]') {
-        continue;
-      }
-
-      final Map<String, dynamic> data;
-      try {
-        final decoded = jsonDecode(dataStr);
-        if (decoded is! Map<String, dynamic>) continue;
-        data = decoded;
-      } on FormatException {
-        continue;
-      }
-      final eventType = currentEventType ?? data['type'] as String?;
-      if (eventType == 'error' ||
-          eventType == 'response.failed' ||
-          eventType == 'response.incomplete' ||
-          data['error'] != null) {
+      if (types.any(_isStreamFailureEvent) || data['error'] != null) {
         final response = data['response'];
         final detail = response is Map ? response : data;
         final error = detail['error'];
         final reason = error is Map ? error['message'] : error;
         throw ApiException(
           _withResponseBody(
-            '流式请求失败：${reason ?? detail['message'] ?? detail['incomplete_details'] ?? eventType}',
+            '流式请求失败：${reason ?? detail['message'] ?? detail['incomplete_details'] ?? types.join('/')}',
             data,
           ),
         );
       }
 
       if (isImagesApi) {
-        if (data['task_id'] != null || data['data'] is List) {
+        if (data['task_id'] != null) {
           return data;
         }
-        if (_isImageStreamResultEvent(eventType)) {
-          final b64 = data['b64_json'] as String?;
-          if (b64 != null && b64.isNotEmpty) {
-            lastImagesB64 = b64;
+        // A complete Images response inside one event. Empty lists are
+        // progress events, not the final result, so keep reading.
+        final payload = data['data'];
+        if (payload is List && payload.any(_hasImageItem)) {
+          return data;
+        }
+        final image = _imageItem(data);
+        if (image != null) {
+          if (types.any((type) => type.endsWith('partial_image'))) {
+            partialImage = image;
+          } else {
+            finalImage = image;
           }
         }
-      } else if (eventType == 'response.completed') {
+      } else if (types.contains('response.completed')) {
         final resp = data['response'];
         if (resp is Map) {
           completedResponse = Map<String, dynamic>.from(resp);
         }
-      } else if (eventType == 'response.output_item.done') {
+      } else if (types.contains('response.output_item.done')) {
         final item = data['item'];
         if (item is Map) {
           outputItems.add(Map<String, dynamic>.from(item));
         }
-      } else if (eventType == 'response.image_generation_call.partial_image') {
-        final b64 = data['b64_json'] as String?;
-        if (b64 != null && b64.isNotEmpty) {
+      } else if (types.contains(
+        'response.image_generation_call.partial_image',
+      )) {
+        final b64 = data['b64_json'];
+        if (b64 is String && b64.isNotEmpty) {
           outputItems.add({
             'type': 'image_generation_call',
             'result': {'b64_json': b64},
           });
         }
       }
+      return null;
+    }
+
+    Map<String, dynamic>? dispatch() {
+      final eventName = currentEventType;
+      currentEventType = null;
+      if (dataLines.isEmpty) {
+        return null;
+      }
+      final lines = List<String>.of(dataLines);
+      dataLines.clear();
+      for (final data in _decodeSseData(lines, diagnostics)) {
+        final result = handleEvent(eventName, data);
+        if (result != null) {
+          return result;
+        }
+      }
+      return null;
+    }
+
+    try {
+      await for (final rawLine
+          in responseBody.stream
+              .map<List<int>>((chunk) {
+                diagnostics.bytes += chunk.length;
+                return chunk;
+              })
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
+        final line = rawLine.trim();
+        if (isEventStream == null && line.isNotEmpty) {
+          isEventStream = line.startsWith(':') || _isSseFieldLine(line);
+        }
+        if (isEventStream == false) {
+          jsonBody.writeln(rawLine);
+          continue;
+        }
+        if (line.isEmpty) {
+          final result = dispatch();
+          if (result != null) return result;
+          continue;
+        }
+        if (line.startsWith(':')) {
+          continue;
+        }
+        if (line.startsWith('event:')) {
+          // Tolerate servers that omit the blank line between events.
+          if (dataLines.isNotEmpty) {
+            final result = dispatch();
+            if (result != null) return result;
+          }
+          currentEventType = line.substring('event:'.length).trim();
+          continue;
+        }
+        if (line.startsWith('data:')) {
+          final value = line.substring('data:'.length).trim();
+          if (value.isNotEmpty && value != '[DONE]') {
+            dataLines.add(value);
+          }
+          continue;
+        }
+        if (!_isSseFieldLine(line)) {
+          diagnostics.strayLines++;
+          strayLines.writeln(rawLine);
+        }
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException {
+      rethrow;
+    } catch (error) {
+      throw ApiException(
+        '流式响应读取中断：$error\n\n${diagnostics.summary()}',
+        statusCode: response.statusCode,
+      );
     }
 
     if (isEventStream == false) {
@@ -420,22 +500,125 @@ class OpenAiClient {
       );
     }
 
+    // The stream may end without a trailing blank line.
+    final trailing = dispatch();
+    if (trailing != null) return trailing;
+
     if (isImagesApi) {
-      return {
-        'data': [
-          if (lastImagesB64 != null) {'b64_json': lastImagesB64},
-        ],
-      };
+      final image = finalImage ?? partialImage;
+      if (image != null) {
+        return {
+          'data': [image],
+        };
+      }
+      final fallback = _tryDecodeMap(strayLines.toString());
+      if (fallback != null) {
+        final payload = fallback['data'];
+        if (fallback['task_id'] != null ||
+            (payload is List && payload.any(_hasImageItem))) {
+          return fallback;
+        }
+      }
+      throw _missingStreamImage(response, diagnostics);
     }
 
     return completedResponse ?? {'output': outputItems};
   }
 
-  bool _isImageStreamResultEvent(String? eventType) {
-    return eventType == 'image_generation.completed' ||
-        eventType == 'image_generation.partial_image' ||
-        eventType == 'image_edit.completed' ||
-        eventType == 'image_edit.partial_image';
+  MissingImageDataException _missingStreamImage(
+    Response<ResponseBody> response,
+    _StreamDiagnostics diagnostics,
+  ) {
+    return MissingImageDataException(
+      _withStatusCode(
+        '流式响应已结束，但没有解析到最终图片。服务端可能已经生成并计费，'
+        '请先查看下方的流式诊断信息再决定是否重试。\n\n${diagnostics.summary()}',
+        response.statusCode,
+      ),
+      statusCode: response.statusCode,
+    );
+  }
+
+  void _logStreamFailure(
+    String title,
+    Stopwatch stopwatch,
+    ApiException error,
+  ) {
+    unawaited(
+      _requestLogService?.logError(
+        title,
+        '耗时: ${stopwatch.elapsedMilliseconds} ms\n错误: ${error.message}',
+      ),
+    );
+  }
+
+  static bool _isSseFieldLine(String line) {
+    return const ['data:', 'event:', 'id:', 'retry:'].any(line.startsWith);
+  }
+
+  static bool _isStreamFailureEvent(String type) {
+    return type == 'error' ||
+        type == 'response.failed' ||
+        type == 'response.incomplete' ||
+        type.endsWith('.failed');
+  }
+
+  static bool _hasImageItem(Object? item) {
+    return item is Map && _imageItem(Map<String, dynamic>.from(item)) != null;
+  }
+
+  /// Extracts `{b64_json, url}` from an Images stream event or result item.
+  static Map<String, dynamic>? _imageItem(Map<String, dynamic> data) {
+    final b64 = data['b64_json'];
+    final url = data['url'];
+    final hasB64 = b64 is String && b64.isNotEmpty;
+    final hasUrl = url is String && url.isNotEmpty;
+    if (!hasB64 && !hasUrl) {
+      return null;
+    }
+    return {if (hasB64) 'b64_json': b64, if (hasUrl) 'url': url};
+  }
+
+  /// Decodes the `data:` lines of one SSE event. The spec joins multi-line
+  /// data with `\n`; some relays instead split a long JSON line arbitrarily,
+  /// and some omit the blank line between events, so try each in turn.
+  static List<Map<String, dynamic>> _decodeSseData(
+    List<String> lines,
+    _StreamDiagnostics diagnostics,
+  ) {
+    final whole =
+        _tryDecodeMap(lines.join('\n')) ??
+        (lines.length > 1 ? _tryDecodeMap(lines.join()) : null);
+    if (whole != null) {
+      return [whole];
+    }
+    final events = <Map<String, dynamic>>[];
+    if (lines.length > 1) {
+      for (final line in lines) {
+        final decoded = _tryDecodeMap(line);
+        if (decoded != null) {
+          events.add(decoded);
+        } else {
+          diagnostics.recordUnparsed(line);
+        }
+      }
+    } else {
+      diagnostics.recordUnparsed(lines.single);
+    }
+    return events;
+  }
+
+  static Map<String, dynamic>? _tryDecodeMap(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<String> _streamErrorMessage(DioException error) async {
@@ -654,5 +837,78 @@ class OpenAiClient {
     }
 
     return '${text.substring(0, maxLength)}...';
+  }
+}
+
+/// Records what a streaming response contained, so a missing image can be
+/// diagnosed from the request log instead of guessed at.
+class _StreamDiagnostics {
+  int bytes = 0;
+  int strayLines = 0;
+  int unparsed = 0;
+  String? lastUnparsed;
+  final Map<String, int> eventTypes = <String, int>{};
+  final List<String> recentEvents = <String>[];
+
+  void recordEvent(Set<String> types, Map<String, dynamic> data) {
+    final key = types.isEmpty ? '(无类型)' : types.join(' / ');
+    eventTypes.update(key, (count) => count + 1, ifAbsent: () => 1);
+    recentEvents.add(_preview(data));
+    if (recentEvents.length > 3) {
+      recentEvents.removeAt(0);
+    }
+  }
+
+  void recordUnparsed(String data) {
+    unparsed++;
+    lastUnparsed = _shorten(data, 300);
+  }
+
+  String summary() {
+    final events = eventTypes.isEmpty
+        ? '无'
+        : eventTypes.entries
+              .map((entry) => '${entry.key} ×${entry.value}')
+              .join('，');
+    final buffer = StringBuffer('流式诊断：接收 $bytes 字节，事件：$events');
+    if (unparsed > 0) {
+      buffer.write('\n无法解析的 data：$unparsed 条，最后一条：$lastUnparsed');
+    }
+    if (strayLines > 0) {
+      buffer.write('\n非 SSE 字段行：$strayLines 行');
+    }
+    if (recentEvents.isNotEmpty) {
+      buffer.write('\n最近事件（长字符串已截断）：\n${recentEvents.join('\n')}');
+    }
+    return buffer.toString();
+  }
+
+  static String _preview(Map<String, dynamic> data) {
+    try {
+      return jsonEncode(_redact(data));
+    } catch (_) {
+      return _shorten(data.toString(), 500);
+    }
+  }
+
+  static Object? _redact(Object? value) {
+    return switch (value) {
+      String text => _shorten(text, 120),
+      Map map => {
+        for (final entry in map.entries) '${entry.key}': _redact(entry.value),
+      },
+      List list => [
+        for (final item in list.take(5)) _redact(item),
+        if (list.length > 5) '…共 ${list.length} 项',
+      ],
+      _ => value,
+    };
+  }
+
+  static String _shorten(String text, int maxLength) {
+    if (text.length <= maxLength) {
+      return text;
+    }
+    return '${text.substring(0, maxLength)}…（共 ${text.length} 字符）';
   }
 }

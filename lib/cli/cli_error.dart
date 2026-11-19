@@ -24,6 +24,13 @@ class CliException implements Exception {
 
 CliException describeCliError(Object error) {
   if (error is CliException) return error;
+  if (error is MissingImageDataException) {
+    return CliException(
+      'invalid_response',
+      error.message,
+      httpStatus: error.statusCode,
+    );
+  }
   if (error is ApiException) {
     return CliException(
       'api_error',

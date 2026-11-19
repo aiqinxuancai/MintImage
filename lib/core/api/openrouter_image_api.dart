@@ -88,6 +88,8 @@ Future<List<GenerationResult>> requestOpenRouterImages(
             rawResponseValue: item['b64_json'] as String,
           ),
   ];
-  if (results.isEmpty) throw const ApiException('接口响应缺少图片数据。');
+  if (results.isEmpty) {
+    throw const MissingImageDataException('接口返回成功，但响应中没有图片数据，服务端可能已经计费。');
+  }
   return results;
 }
