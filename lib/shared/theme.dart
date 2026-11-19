@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppThemeTokens {
@@ -152,6 +153,9 @@ ThemeData buildAppTheme() {
     textTheme: baseTextTheme,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
+      // A transparent background makes Flutter assume a dark bar and pick
+      // white status bar icons, which vanish on the light canvas.
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
       foregroundColor: AppThemeTokens.textPrimary,
       surfaceTintColor: Colors.transparent,
       elevation: 0,

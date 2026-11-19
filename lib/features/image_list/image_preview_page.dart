@@ -111,6 +111,7 @@ class _ImagePreviewPageState extends ConsumerState<ImagePreviewPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         actions: [
           if (record.resultImagePath != null || record.resultImageUrl != null)
             Padding(
