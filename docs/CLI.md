@@ -9,8 +9,9 @@ MintImage 完整桌面包附带的命令行功能，适合 Agent、脚本和自�
 ```text
 cli/
   bin/mint-image.exe    # Windows；macOS 对应 bin/mint-image
+  bin/README.md        # 快速使用说明（命令示例以 bin 目录为当前目录）
   lib/                 # 构建工具生成的原生依赖
-  README.md
+  README.md            # 本文档
 ```
 
 不单独发布 CLI 包，也不提供自动释放缓存的单文件封装。图形界面和命令行均随完整应用包分发。Agent 直接调用 `cli/bin` 中的控制台入口；将该目录加入 PATH 后可使用 `mint-image` 命令。下文示例默认从 `cli/` 目录运行。运行发布包无需安装 Dart 或 Flutter。
@@ -101,7 +102,13 @@ GPT Image 2.6 支持 `--format gif` 和 `--format svg`，会自动关闭单次�
 
 特殊安装位置可以用 `--settings-file 路径` 或环境变量 `MINT_IMAGE_SETTINGS_FILE` 指定。支持 Windows 偏好 JSON、macOS 偏好 plist 或 `SettingsModel` 原始 JSON。该选项可用于 `generate` 和 `profiles`。
 
-仍支持完全独立的连接参数，并可覆盖配置中的部分字段。优先级为：**命令行参数 > 对应环境变量 > MintImage 保存的配置 > 默认值**。例如，`--model other-model --no-stream` 只覆盖本次调用使用的模型和流式开关。需要完全忽略桌面端配置时使用 `--no-app-config`：
+仍支持完全独立的连接参数，并可覆盖配置中的部分字段。优先级为：**命令行参数 > 对应环境变量 > MintImage 保存的配置 > 默认值**。例如，`--model other-model --no-stream` 只覆盖本次调用使用的模型和流式开关。
+
+临时切换模型时使用 `--model`（简写 `-m`）：Base URL、API Key、API 协议等仍沿用所选配置，仅本次调用有效，不会改写已保存的配置：
+
+```bash
+./bin/mint-image generate --profile '我的生图配置' -m other-model --prompt '薄荷色的猫'
+```需要完全忽略桌面端配置时使用 `--no-app-config`：
 
 ```bash
 export MINT_IMAGE_API_KEY='你的密钥'
@@ -142,7 +149,7 @@ cat prompt.txt | ./bin/mint-image generate --prompt-file -
 | `--no-app-config` | — | 禁止自动读取已保存配置 |
 | `--base-url` | `MINT_IMAGE_BASE_URL` | 继承配置；无配置时为 `https://api.openai.com`；可带 `/v1` |
 | `--api-key` | `MINT_IMAGE_API_KEY` | 继承配置；可通过参数或环境变量覆盖 |
-| `--model` | `MINT_IMAGE_MODEL` | 继承配置；无配置时使用应用现有的协议默认模型 |
+| `--model` / `-m` | `MINT_IMAGE_MODEL` | 继承配置；无配置时使用应用现有的协议默认模型。仅替换本次请求的模型，不改变 Base URL 和 Key |
 | `--api-mode` | — | 继承配置，未配置时 `images`；可选 `images_async`（异步任务）、`responses` |
 | `--prompt` / `-p` | — | 提示词；与 `--prompt-file` 二选一 |
 | `--prompt-file` | — | UTF-8 文件，`-` 表示 stdin |

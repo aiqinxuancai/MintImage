@@ -20,5 +20,7 @@ Future<void> main() async {
     'build/cli/bundle/bin/mint_image$suffix',
   ).rename('build/cli/bundle/bin/mint-image$suffix');
   await File('docs/CLI.md').copy('build/cli/bundle/README.md');
+  // Usage guide next to the executable, for users and Agents that open bin/.
+  await File('docs/CLI_USAGE.md').copy('build/cli/bundle/bin/README.md');
   stdout.writeln('CLI: ${executable.absolute.path}');
 }

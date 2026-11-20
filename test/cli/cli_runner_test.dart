@@ -330,6 +330,48 @@ void main() {
     },
   );
 
+  for (final flag in ['--model', '-m']) {
+    test(
+      '$flag overrides only the model for this call and keeps saved settings',
+      () async {
+        final settings = await writeSettings([
+          savedProfile('saved', '已保存', key: 'saved-only-secret'),
+        ]);
+        final before = await settings.readAsString();
+        final models = <Object?>[];
+        respond = (request) async {
+          final body =
+              jsonDecode(await utf8.decoder.bind(request).join()) as Map;
+          models.add(body['model']);
+          await _json(request, {
+            'data': [
+              {'b64_json': _pngBase64},
+            ],
+          });
+        };
+        final env = {'MINT_IMAGE_SETTINGS_FILE': settings.path};
+        final overridden = await run([
+          '--profile',
+          '已保存',
+          '--prompt',
+          'cat',
+          flag,
+          'one-off-model',
+        ], env: env);
+        expect(overridden.code, 0);
+        final inherited = await run(['--prompt', 'cat'], env: env);
+        expect(inherited.code, 0);
+        expect(models, ['one-off-model', 'saved-image-model']);
+        // The saved profile's base URL (the fixture server) and key are reused.
+        expect(authorization, [
+          'Bearer saved-only-secret',
+          'Bearer saved-only-secret',
+        ]);
+        expect(await settings.readAsString(), before);
+      },
+    );
+  }
+
   test(
     'discovers the desktop native preference file automatically',
     () async {

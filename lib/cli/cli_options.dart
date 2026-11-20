@@ -24,7 +24,11 @@ ArgParser createCliParser() => createProfileListParser()
   ..addMultiOption('image', splitCommas: false, help: '参考图路径，可重复；提供后使用图生图。')
   ..addOption('base-url', help: 'API 地址（可包含 /v1）。环境变量 MINT_IMAGE_BASE_URL。')
   ..addOption('api-key', help: 'API 密钥，建议改用环境变量 MINT_IMAGE_API_KEY。')
-  ..addOption('model', help: '模型名。环境变量 MINT_IMAGE_MODEL。')
+  ..addOption(
+    'model',
+    abbr: 'm',
+    help: '仅本次请求使用的模型名；Base URL、Key 等仍继承所选配置，不修改已保存配置。环境变量 MINT_IMAGE_MODEL。',
+  )
   ..addOption(
     'api-mode',
     allowed: ['images', 'images_async', 'responses'],
@@ -85,6 +89,7 @@ String cliUsage(ArgParser parser) =>
 用法:
   mint-image generate --prompt "提示词" [选项]
   mint-image generate --profile "配置名称" --prompt "提示词"
+  mint-image generate --model "其他模型" --prompt "提示词"
   mint-image profiles
   mint-image generate --prompt-file - --count 4 --parallel 2
   mint-image generate --prompt "修改说明" --image reference.png
