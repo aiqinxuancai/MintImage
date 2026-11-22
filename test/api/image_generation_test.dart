@@ -225,7 +225,18 @@ void main() {
                   as Map<String, dynamic>;
 
           expect(body['model'], 'gpt-5.5');
-          expect(body['input'], 'a red apple on white background');
+          expect(body['input'], [
+            {
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'input_text',
+                  'text': 'a red apple on white background',
+                },
+              ],
+            },
+          ]);
+          expect(body['reasoning'], {'effort': 'high'});
           expect(body['tool_choice'], 'required');
           expect(body.containsKey('response_format'), isFalse);
 
@@ -274,7 +285,7 @@ void main() {
             server,
             model: 'gpt-5.5',
             apiMode: ImageGenerationApiMode.responses,
-          ),
+          ).copyWith(reasoningEffort: ResponsesReasoningEffort.high),
           responseFormat: 'url',
           timeoutSeconds: 600,
         );

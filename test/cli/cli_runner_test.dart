@@ -500,12 +500,30 @@ void main() {
 
   test('inherits saved Responses protocol and stream setting', () async {
     final settings = await writeSettings([
-      savedProfile('saved', 'Responses 配置', apiMode: 'responses', stream: true),
+      {
+        ...savedProfile(
+          'saved',
+          'Responses 配置',
+          apiMode: 'responses',
+          stream: true,
+        ),
+        'reasoningEffort': 'low',
+        'includeSizeInPrompt': true,
+      },
     ]);
     respond = (request) async {
       final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
       expect(body['stream'], isTrue);
       expect(body['model'], 'saved-image-model');
+      expect(body['reasoning'], {'effort': 'low'});
+      final prompt = body['input'][0]['content'][0]['text'] as String;
+      if (body['tools'][0].containsKey('size')) {
+        expect(prompt, startsWith('cat\n\n'));
+        expect(prompt, contains('1536 pixels wide by 1024 pixels high'));
+        expect(prompt, contains('3:2'));
+      } else {
+        expect(prompt, 'cat');
+      }
       request.response.headers.contentType = ContentType(
         'text',
         'event-stream',
@@ -522,12 +540,14 @@ void main() {
       );
       await request.response.close();
     };
-    final result = await run(
-      ['--prompt', 'cat'],
-      env: {'MINT_IMAGE_SETTINGS_FILE': settings.path},
-    );
-    expect(result.code, 0);
-    expect(paths, ['/v1/responses']);
+    for (final size in ['1536x1024', 'auto']) {
+      final result = await run(
+        ['--prompt', 'cat', '--size', size],
+        env: {'MINT_IMAGE_SETTINGS_FILE': settings.path},
+      );
+      expect(result.code, 0);
+    }
+    expect(paths, ['/v1/responses', '/v1/responses']);
   });
 
   for (final inheritProtocol in [false, true]) {
@@ -839,6 +859,7 @@ void main() {
     respond = (request) async {
       final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
       expect(body['model'], 'fixture-responses-model');
+      expect(body['reasoning'], {'effort': 'high'});
       expect(body['tools'][0]['type'], 'image_generation');
       expect(body['tools'][0].containsKey('size'), isFalse);
       await _json(request, {
@@ -854,6 +875,8 @@ void main() {
       'responses',
       '--model',
       'fixture-responses-model',
+      '--reasoning-effort',
+      'high',
       '--size',
       'auto',
     ]);

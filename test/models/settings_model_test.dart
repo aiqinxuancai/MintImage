@@ -121,11 +121,23 @@ void main() {
       model: 'gpt-5.5',
       apiMode: ImageGenerationApiMode.responses,
     );
-    final updated = settings.copyWith(profiles: [profile]);
+    final updated = settings.copyWith(
+      profiles: [
+        profile.copyWith(
+          reasoningEffort: ResponsesReasoningEffort.high,
+          includeSizeInPrompt: true,
+        ),
+      ],
+    );
 
     final decoded = SettingsModel.decode(updated.encode());
 
     expect(decoded.activeProfile.apiMode, ImageGenerationApiMode.responses);
+    expect(
+      decoded.activeProfile.reasoningEffort,
+      ResponsesReasoningEffort.high,
+    );
+    expect(decoded.activeProfile.includeSizeInPrompt, isTrue);
     expect(decoded.activeProfile.generationEndpoint, contains('/v1/responses'));
   });
 

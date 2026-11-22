@@ -34,6 +34,11 @@ ArgParser createCliParser() => createProfileListParser()
     allowed: ['images', 'images_async', 'responses'],
     help: 'API 协议，默认继承 MintImage 配置，未配置时为 images。',
   )
+  ..addOption(
+    'reasoning-effort',
+    allowed: ResponsesReasoningEffort.values.map((e) => e.value),
+    help: 'Responses 模型思考等级；省略时继承配置，default 使用模型默认值。',
+  )
   ..addOption('size', defaultsTo: '1024x1024', help: '宽x高或 auto，具体支持范围由服务商决定。')
   ..addOption(
     'quality',
@@ -149,6 +154,13 @@ class CliOptions {
     final mode = ImageGenerationApiMode.fromStorageValue(
       args['api-mode'] ?? savedProfile?.apiMode.storageValue,
     );
+    if (args.wasParsed('reasoning-effort') &&
+        mode != ImageGenerationApiMode.responses) {
+      throw const CliException(
+        'invalid_arguments',
+        '--reasoning-effort 仅适用于 Responses API。',
+      );
+    }
     final model = configured(
       'model',
       'MINT_IMAGE_MODEL',
@@ -280,6 +292,10 @@ class CliOptions {
       apiKey: key,
       model: model,
       apiMode: mode,
+      includeSizeInPrompt: savedProfile?.includeSizeInPrompt ?? false,
+      reasoningEffort: ResponsesReasoningEffort.parse(
+        args['reasoning-effort'] ?? savedProfile?.reasoningEffort.value,
+      ),
       safetyIdentifier:
           args['safety-identifier'] as String? ??
           savedProfile?.safetyIdentifier ??

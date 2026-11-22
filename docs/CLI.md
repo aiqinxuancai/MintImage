@@ -154,6 +154,7 @@ cat prompt.txt | ./bin/mint-image generate --prompt-file -
 | `--prompt` / `-p` | — | 提示词；与 `--prompt-file` 二选一 |
 | `--prompt-file` | — | UTF-8 文件，`-` 表示 stdin |
 | `--image` | — | 参考图路径，可重复 |
+| `--reasoning-effort` | — | Responses 思考等级；省略时继承配置，`default` 使用模型默认值 |
 | `--size` | — | `1024x1024`，也支持其他正整数 `宽x高` 或 `auto` |
 | `--quality` | — | `auto`，可选 `low`、`medium`、`high`、`xhigh`、`max`，取决于模型 |
 | `--format` | — | `png`，可选 `jpeg`、`webp`、`gif`、`svg` |
@@ -171,6 +172,10 @@ cat prompt.txt | ./bin/mint-image generate --prompt-file -
 具体模型、像素尺寸、质量和格式的支持范围由 API 服务商决定。RightAPI 使用 `https://api.site` 和 `--api-mode images_async`，复用桌面端的异步提交与任务轮询。异步模式按协议工作，适用于任何支持 `async: true`、`task_id` 和 `/v1/tasks/{task_id}` 的地址；普通 `images` 模式收到任务号时也会自动轮询。TryAIGC 使用 `https://api.tryaigc.cn`，`gpt-image-2` 默认按非流式 Images 协议提交。Responses 模式可用 `--api-mode responses --model 你的模型` 指定服务商支持的模型。
 
 ## Agent 输出协议与错误
+
+`--size` 指定请求的目标像素尺寸。部分 Responses 服务会自行决定输出分辨率。例如，实测请求 `1024x1024` 并在提示词中要求正方形时，服务端返回了 `1254x1254`。桌面端 Responses 配置中的「将尺寸和宽高比加入提示词」默认关闭，CLI 会继承该开关。开启后，文生图和图生图都会将具体尺寸及宽高比追加到提示词；选择 `--size auto` 时使用原提示词。该功能可引导构图比例，实际像素仍由服务端决定。
+
+任务要求精确尺寸时，Agent 应逐一读取 `results[].files[]` 中的图片并核对宽高，再报告是否满足要求。`ok: true` 表示任务成功，CLI 保存服务端原图，尺寸偏差也可能返回成功。
 
 除 `--help` 外，`stdout` 只输出一份 UTF-8 JSON 文档。`profiles` 返回配置列表，`generate` 返回任务结果。任务按编号排列；`index` 从 1 开始。`files` 是已完整保存的图片绝对路径。不要依赖文件名格式来推断任务编号，使用返回的 JSON 字段。
 

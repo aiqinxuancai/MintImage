@@ -8,6 +8,39 @@ import 'package:mint_image/features/settings/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('Responses settings follow the selected image protocol', (
+    tester,
+  ) async {
+    await _pumpSettingsPage(tester, const Size(1280, 1000));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('image-api')),
+        matching: find.byTooltip('编辑'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final toggle = find.text('将尺寸和宽高比加入提示词');
+    final effort = find.text('思考等级');
+    expect(toggle, findsNothing);
+    expect(effort, findsNothing);
+    for (final mode in [
+      ImageGenerationApiMode.responses,
+      ImageGenerationApiMode.imagesAsync,
+    ]) {
+      await tester.tap(
+        find.byType(DropdownButtonFormField<ImageGenerationApiMode>),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(mode.label).last);
+      await tester.pumpAndSettle();
+      final expected = mode == ImageGenerationApiMode.responses
+          ? findsOneWidget
+          : findsNothing;
+      expect(toggle, expected);
+      expect(effort, expected);
+    }
+  });
+
   testWidgets('compact layout stacks sections in a single column', (
     tester,
   ) async {

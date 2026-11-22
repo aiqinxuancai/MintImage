@@ -64,7 +64,6 @@ class ImageGenerationApi {
       final body = buildResponsesImageBody(
         request: request,
         profile: profile,
-        input: request.prompt,
         action: 'generate',
       );
       final response = profile.useStreaming

@@ -45,6 +45,22 @@ enum ImageGenerationApiMode {
   }
 }
 
+enum ResponsesReasoningEffort {
+  defaultValue,
+  none,
+  minimal,
+  low,
+  medium,
+  high,
+  xhigh,
+  max;
+
+  String get value => this == defaultValue ? 'default' : name;
+
+  static ResponsesReasoningEffort parse(Object? value) =>
+      values.firstWhere((e) => e.value == value, orElse: () => defaultValue);
+}
+
 class ApiProfile {
   const ApiProfile({
     required this.id,
@@ -54,6 +70,8 @@ class ApiProfile {
     required this.model,
     this.apiMode = ImageGenerationApiMode.images,
     this.useStreaming = false,
+    this.includeSizeInPrompt = false,
+    this.reasoningEffort = ResponsesReasoningEffort.defaultValue,
     this.safetyIdentifier = '',
   });
 
@@ -94,7 +112,9 @@ class ApiProfile {
       apiKey: json['apiKey'] as String? ?? '',
       model: json['model'] as String? ?? apiMode.defaultModel,
       apiMode: apiMode,
+      includeSizeInPrompt: json['includeSizeInPrompt'] == true,
       useStreaming: json['useStreaming'] as bool? ?? false,
+      reasoningEffort: ResponsesReasoningEffort.parse(json['reasoningEffort']),
       safetyIdentifier: json['safetyIdentifier'] as String? ?? '',
     );
   }
@@ -106,6 +126,8 @@ class ApiProfile {
   final String model;
   final ImageGenerationApiMode apiMode;
   final bool useStreaming;
+  final bool includeSizeInPrompt;
+  final ResponsesReasoningEffort reasoningEffort;
   final String safetyIdentifier;
 
   String? get resolvedSafetyIdentifier {
@@ -185,6 +207,8 @@ class ApiProfile {
     String? model,
     ImageGenerationApiMode? apiMode,
     bool? useStreaming,
+    bool? includeSizeInPrompt,
+    ResponsesReasoningEffort? reasoningEffort,
     String? safetyIdentifier,
   }) {
     return ApiProfile(
@@ -194,6 +218,8 @@ class ApiProfile {
       apiKey: apiKey ?? this.apiKey,
       model: model ?? this.model,
       apiMode: apiMode ?? this.apiMode,
+      reasoningEffort: reasoningEffort ?? this.reasoningEffort,
+      includeSizeInPrompt: includeSizeInPrompt ?? this.includeSizeInPrompt,
       useStreaming: useStreaming ?? this.useStreaming,
       safetyIdentifier: safetyIdentifier ?? this.safetyIdentifier,
     );
@@ -207,6 +233,9 @@ class ApiProfile {
       'apiKey': apiKey,
       'model': model,
       'apiMode': apiMode.storageValue,
+      if (reasoningEffort != ResponsesReasoningEffort.defaultValue)
+        'reasoningEffort': reasoningEffort.value,
+      if (includeSizeInPrompt) 'includeSizeInPrompt': true,
       'useStreaming': useStreaming,
       'safetyIdentifier': safetyIdentifier,
     };

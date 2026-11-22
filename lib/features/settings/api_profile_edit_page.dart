@@ -27,7 +27,9 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
   bool _obscureApiKey = true;
   final _safetyIdentifierController = TextEditingController();
   bool _fetchingModels = false;
+  late ResponsesReasoningEffort _reasoningEffort;
   bool _useStreaming = false;
+  late bool _includeSizeInPrompt;
   CancelToken? _modelListCancelToken;
   List<String> _modelOptions = const [];
   late ImageGenerationApiMode _apiMode;
@@ -43,6 +45,9 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
     _nameController.text =
         profile?.name ?? '配置 ${settings.profiles.length + 1}';
     _apiMode = profile?.apiMode ?? ImageGenerationApiMode.images;
+    _reasoningEffort =
+        profile?.reasoningEffort ?? ResponsesReasoningEffort.defaultValue;
+    _includeSizeInPrompt = profile?.includeSizeInPrompt ?? false;
     _useStreaming = profile?.useStreaming ?? false;
     _baseUrlController.text = profile?.baseUrl ?? 'https://api.openai.com';
     _apiKeyController.text = profile?.apiKey ?? '';
@@ -195,6 +200,40 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
                         });
                       },
                     ),
+                    if (_apiMode == ImageGenerationApiMode.responses) ...[
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<ResponsesReasoningEffort>(
+                        initialValue: _reasoningEffort,
+                        decoration: const InputDecoration(
+                          labelText: '思考等级',
+                          helperText: '可用等级取决于所选模型。',
+                        ),
+                        items: [
+                          for (final effort in ResponsesReasoningEffort.values)
+                            DropdownMenuItem(
+                              value: effort,
+                              child: Text(
+                                effort == ResponsesReasoningEffort.defaultValue
+                                    ? '模型默认'
+                                    : effort.value,
+                              ),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _reasoningEffort = value);
+                          }
+                        },
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('将尺寸和宽高比加入提示词'),
+                        subtitle: const Text('选择具体尺寸时，向模型说明目标画布的像素宽高和比例。'),
+                        value: _includeSizeInPrompt,
+                        onChanged: (value) =>
+                            setState(() => _includeSizeInPrompt = value),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -273,6 +312,8 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
 
     if (existing == null) {
       final created = await notifier.addProfile(
+        includeSizeInPrompt: _includeSizeInPrompt,
+        reasoningEffort: _reasoningEffort,
         safetyIdentifier: _safetyIdentifierController.text.trim(),
         name: _nameController.text.trim(),
         baseUrl: _baseUrlController.text.trim(),
@@ -286,6 +327,8 @@ class _ApiProfileEditPageState extends ConsumerState<ApiProfileEditPage> {
     } else {
       await notifier.updateProfile(
         existing.copyWith(
+          includeSizeInPrompt: _includeSizeInPrompt,
+          reasoningEffort: _reasoningEffort,
           safetyIdentifier: _safetyIdentifierController.text.trim(),
           name: _nameController.text.trim(),
           baseUrl: _baseUrlController.text.trim(),

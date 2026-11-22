@@ -77,18 +77,12 @@ class ImageEditApi {
       final body = buildResponsesImageBody(
         request: request,
         profile: profile,
-        input: [
-          {
-            'role': 'user',
-            'content': [
-              {'type': 'input_text', 'text': request.prompt},
-              for (final path in request.imagePaths)
-                {
-                  'type': 'input_image',
-                  'image_url': await imagePathToDataUrl(path),
-                },
-            ],
-          },
+        inputImages: [
+          for (final path in request.imagePaths)
+            {
+              'type': 'input_image',
+              'image_url': await imagePathToDataUrl(path),
+            },
         ],
         action: 'edit',
       );

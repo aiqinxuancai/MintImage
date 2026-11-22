@@ -32,6 +32,8 @@
 ./mint-image generate --prompt '水彩风格的山间小屋' --size 1536x1024 --quality high --output ./house.png
 ```
 
+`--size` 是请求的目标尺寸，服务端可能返回其他分辨率。Responses 配置可开启「将尺寸和宽高比加入提示词」来引导比例，即使比例吻合，实际像素也可能不同。任务要求精确尺寸时，Agent 应读取 `results[].files[]` 中每张图片的实际宽高，再判断是否满足要求。
+
 批量并行：提交 4 个独立请求，最多同时运行 2 个：
 
 ```bash
@@ -94,6 +96,7 @@ PowerShell 中设置环境变量：`$env:MINT_IMAGE_API_KEY = '你的密钥'`。
 | `--model` / `-m` | 仅本次请求使用的模型名，不改变 Base URL 和 Key |
 | `--base-url` / `--api-key` | 覆盖本次使用的 API 地址 / 密钥 |
 | `--api-mode` | `images`、`images_async`、`responses`；默认继承配置 |
+| `--reasoning-effort` | Responses 思考等级；省略时继承配置，`default` 使用模型默认值 |
 | `--size` | `1024x1024`（默认）、其他 `宽x高` 或 `auto` |
 | `--quality` | `auto`（默认）、`low`、`medium`、`high`、`xhigh`、`max` |
 | `--format` | `png`（默认）、`jpeg`、`webp`、`gif`、`svg` |

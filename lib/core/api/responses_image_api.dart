@@ -11,12 +11,33 @@ import 'openai_client.dart';
 Map<String, dynamic> buildResponsesImageBody({
   required GenerationRequest request,
   required ApiProfile profile,
-  required Object input,
+  List<Map<String, dynamic>> inputImages = const [],
   required String action,
 }) {
+  var prompt = request.prompt;
+  if (profile.includeSizeInPrompt && !request.isAutoSize) {
+    final width = request.resolvedWidth;
+    final height = request.resolvedHeight;
+    if (width > 0 && height > 0) {
+      final divisor = width.gcd(height);
+      prompt +=
+          '\n\nRender the final image at exactly $width pixels wide by $height pixels high, '
+          'with a ${width ~/ divisor}:${height ~/ divisor} aspect ratio.';
+    }
+  }
   return <String, dynamic>{
     'model': profile.model,
-    'input': input,
+    'input': [
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'input_text', 'text': prompt},
+          ...inputImages,
+        ],
+      },
+    ],
+    if (profile.reasoningEffort != ResponsesReasoningEffort.defaultValue)
+      'reasoning': {'effort': profile.reasoningEffort.value},
     if (profile.resolvedSafetyIdentifier != null)
       'safety_identifier': profile.resolvedSafetyIdentifier,
     'tools': [buildResponsesImageTool(request: request, action: action)],
